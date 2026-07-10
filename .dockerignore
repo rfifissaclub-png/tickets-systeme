@@ -1,0 +1,11 @@
+.git
+backend/tms-backend/vendor
+backend/tms-backend/node_modules
+backend/tms-backend/.env
+backend/tms-backend/storage/logs/*
+backend/tms-backend/storage/framework/cache/*
+backend/tms-backend/storage/framework/sessions/*
+backend/tms-backend/storage/framework/views/*
+backend/tms-backend/.phpunit.cache
+frontend/node_modules
+frontend/dist
