@@ -10,14 +10,16 @@ A multi-tenant enterprise SaaS ticketing platform (Laravel 12 API + React 19 fro
 
 ## Status
 
-**Phase 1 (in progress): backend + database + Docker foundation.** No prior code existed in this repository before this phase — earlier revisions of this file overstated progress that was never actually committed. See [`TODO.md`](TODO.md) for the accurate, current checklist and the phase roadmap.
+**Phases 1–2 done, pending live verification: backend + database + Docker foundation, auth flows, RBAC.** No prior code existed in this repository before Phase 1 — earlier revisions of this file overstated progress that was never actually committed. See [`TODO.md`](TODO.md) for the accurate, current checklist and the phase roadmap.
+
+Every migration, controller, and test has been statically verified (`php -l`, `composer validate`, Laravel Pint) but **not yet run against a real PostgreSQL database** — local Docker access has been unavailable in the environment these phases were built in. Run the commands below at the first opportunity and fix anything that surfaces before trusting this as "working."
 
 ## Architecture decisions
 
 - **Multi-tenancy**: shared PostgreSQL database, every tenant-owned table carries `tenant_id`, isolation enforced by PostgreSQL Row-Level Security policies plus a request-scoped tenant context middleware. Not database-per-tenant.
-- **RBAC**: Spatie `laravel-permission`, tenant-scoped via the package's "teams" feature keyed on `tenant_id`. Roles: Super Admin, Tenant Admin, Manager, Support Agent, Client.
-- **Auth**: Laravel Sanctum, 2FA-ready data model, email verification, password reset (Phase 2).
-- **Realtime**: Laravel Reverb (planned, Phase 3+).
+- **RBAC**: Spatie `laravel-permission`, tenant-scoped via the package's "teams" feature keyed on `tenant_id`. Roles: Super Admin, Tenant Admin, Manager, Support Agent, Client — seeded by `RoleAndPermissionSeeder`, enforced via permission-based policies (`UserPolicy`) plus a `Gate::before` Super Admin bypass.
+- **Auth**: Laravel Sanctum bearer tokens. Login is tenant-slug-aware (a `tenant` field disambiguates users sharing an email across tenants); Super Admins log in with no tenant. Email verification (signed URL) and password reset (forgot/reset) are tenant-scoped and return generic responses to avoid account/tenant enumeration. `remember` on login issues a non-expiring token instead of the default TTL. 2FA-ready columns exist on `users` but verification logic isn't implemented yet.
+- **Realtime**: Laravel Reverb (planned, Phase 4+).
 - **Storage**: S3-compatible (MinIO in dev, S3 in production).
 
 ## Local development
@@ -28,8 +30,13 @@ Requires Docker with the Compose v2 plugin. See `infra/docker-compose.yml`.
 cd infra
 docker compose up -d
 docker compose exec backend php artisan migrate
+docker compose exec backend php artisan db:seed
 docker compose exec backend vendor/bin/pest
 ```
+
+`db:seed` creates roles/permissions plus, outside production, two demo accounts (password `password` for both):
+- `super-admin@tms.local` — platform Super Admin, no tenant.
+- `admin@acme.tms.local` — Tenant Admin for the demo tenant `acme` (login requires `"tenant": "acme"`).
 
 ## Documentation
 

@@ -139,7 +139,9 @@ return [
      *
      * To enable, set to true, and then create listeners to watch these events.
      */
-    'events_enabled' => false,
+    // Enabled so App\Listeners\LogRoleOrPermissionChange can write role/permission
+    // grants and revokes to the audit trail — required by the audit spec.
+    'events_enabled' => true,
 
     /*
      * Teams Feature.

@@ -12,30 +12,6 @@ use Illuminate\Support\Facades\DB;
  * migration actually isolate tenants at the database engine level — not
  * just via application-side query scopes, which a bug elsewhere could skip.
  */
-beforeEach(function () {
-    // Session variables persist on the underlying PDO connection across
-    // tests in the same run (RefreshDatabase only wraps each test in a
-    // transaction, it doesn't reconnect), so every test must start clean.
-    DB::statement('RESET app.tenant_id');
-    DB::statement('RESET app.bypass_rls');
-});
-
-/**
- * @return array{0: Tenant, 1: User}
- */
-function createTenantWithUser(): array
-{
-    // Provisioning a brand new tenant (and its first user) can never satisfy
-    // a tenant-match RLS check — the row doesn't exist yet — so, exactly as
-    // in production, fixture setup goes through the audited bypass.
-    return app(TenantContext::class)->bypass('test fixture setup', function () {
-        $tenant = Tenant::factory()->create();
-        $user = User::factory()->for($tenant)->create();
-
-        return [$tenant, $user];
-    });
-}
-
 it('fails closed when no tenant context is bound', function () {
     createTenantWithUser();
 

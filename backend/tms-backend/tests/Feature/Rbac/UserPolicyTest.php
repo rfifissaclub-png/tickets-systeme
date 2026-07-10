@@ -4,12 +4,10 @@ use App\Enums\RoleName;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Tenancy\TenantContext;
-use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
+use Database\Seeders\RoleAndPermissionSeeder;
 
 beforeEach(function () {
-    DB::statement('RESET app.tenant_id');
-    DB::statement('RESET app.bypass_rls');
+    $this->seed(RoleAndPermissionSeeder::class);
 });
 
 it('lets a Manager view users but denies a Client', function () {
@@ -22,11 +20,10 @@ it('lets a Manager view users but denies a Client', function () {
     });
 
     // Binding tenant context also binds Spatie's team resolver (see
-    // TenantContext::set), so roles created below are scoped to this tenant.
+    // TenantContext::set), so the role *assignments* below are scoped to
+    // this tenant even though the Manager/Client role definitions
+    // themselves are system-wide (seeded with tenant_id IS NULL).
     app(TenantContext::class)->set($tenant->id);
-
-    Role::findOrCreate(RoleName::Manager->value, 'web');
-    Role::findOrCreate(RoleName::Client->value, 'web');
 
     $manager->assignRole(RoleName::Manager->value);
     $client->assignRole(RoleName::Client->value);
@@ -39,7 +36,7 @@ it('lets a Manager view users but denies a Client', function () {
         ->and($manager->can('delete', $manager))->toBeFalse();
 });
 
-it('scopes roles per tenant: the same role name in another tenant does not grant access', function () {
+it('scopes role assignments per tenant even though role definitions are system-wide', function () {
     [$tenantA, $userA] = app(TenantContext::class)->bypass('test fixture setup', function () {
         $tenant = Tenant::factory()->create();
         $user = User::factory()->for($tenant)->create();
@@ -55,11 +52,19 @@ it('scopes roles per tenant: the same role name in another tenant does not grant
     });
 
     app(TenantContext::class)->set($tenantA->id);
-    Role::findOrCreate(RoleName::Manager->value, 'web');
     $userA->assignRole(RoleName::Manager->value);
 
     app(TenantContext::class)->set($tenantB->id);
-    Role::findOrCreate(RoleName::Manager->value, 'web');
 
     expect($userB->hasRole(RoleName::Manager->value))->toBeFalse();
+});
+
+it('lets Super Admin bypass every authorization check regardless of permissions', function () {
+    $superAdmin = app(TenantContext::class)->bypass('test fixture setup', fn () => User::factory()->superAdmin()->create());
+    $superAdmin->assignRole(RoleName::SuperAdmin->value);
+
+    [, $otherUser] = createTenantWithUser();
+
+    expect($superAdmin->can('viewAny', User::class))->toBeTrue()
+        ->and($superAdmin->can('delete', $otherUser))->toBeTrue();
 });

@@ -50,7 +50,10 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Default lifetime for a non-"remember me" login token. LoginController
+    // passes an explicit expiration per token (null when remember=true), so
+    // this value is really just the fallback default for that calculation.
+    'expiration' => env('SANCTUM_TOKEN_EXPIRATION_MINUTES', 1440),
 
     /*
     |--------------------------------------------------------------------------

@@ -6,31 +6,47 @@ Docker/CI infra — quality bar comparable to Jira/Zendesk/Freshdesk.
 
 This is a multi-phase build. Each phase is scoped to land as a reviewable, tested increment.
 
-## Phase 1 — Backend + Database + Docker foundation (current)
+## Phase 1 — Backend + Database + Docker foundation (done, pending live verification)
 
 - [x] Git repository initialized.
 - [x] Root documentation corrected to reflect actual repo state.
-- [ ] Monorepo scaffold: `backend/`, `frontend/` (placeholder), `infra/`.
-- [ ] Laravel 12 bootstrap (`backend/tms-backend/`, PHP 8.4) — Sanctum, Spatie RBAC, queues,
+- [x] Monorepo scaffold: `backend/`, `frontend/` (placeholder), `infra/`.
+- [x] Laravel 12 bootstrap (`backend/tms-backend/`, PHP 8.4) — Sanctum, Spatie RBAC, queues,
       events/listeners, policies, DTOs, repositories/services structure, Pest, L5-Swagger scaffold.
-- [ ] Multi-tenancy + PostgreSQL RLS foundation: `tenants`/`users` migrations (UUID PKs), tenant
+- [x] Multi-tenancy + PostgreSQL RLS foundation: `tenants`/`users` migrations (UUID PKs), tenant
       context middleware, RLS policies on tenant-owned tables, audited Super Admin bypass path.
-- [ ] Audit log foundation: `audit_logs` table, `AuditService`, `Auditable` trait/observer, auth
+- [x] Audit log foundation: `audit_logs` table, `AuditService`, `Auditable` trait/observer, auth
       event listeners (login/logout).
-- [ ] API foundation: versioned routes (`/api/v1`), consistent JSON response envelope, centralized
+- [x] API foundation: versioned routes (`/api/v1`), consistent JSON response envelope, centralized
       exception handling.
-- [ ] Docker infra: PHP-FPM 8.4 + Nginx Dockerfiles, `docker-compose.yml` (Postgres, Redis, MinIO,
+- [x] Docker infra: PHP-FPM 8.4 + Nginx Dockerfiles, `docker-compose.yml` (Postgres, Redis, MinIO,
       Mailpit), `.env.example`.
-- [ ] Pest baseline: tenant-isolation test, RBAC policy test.
-- [ ] GitHub Actions CI skeleton (composer install, migrate, pest).
+- [x] Pest baseline: tenant-isolation test, RBAC policy test.
+- [x] GitHub Actions CI skeleton (composer install, migrate, pest).
+- [ ] **Live verification blocked**: local Docker socket access/Compose plugin unavailable in this
+      environment — migrations and the Pest suite have only been statically verified (`php -l`,
+      `composer validate`, Pint), never actually run against real PostgreSQL. Run
+      `docker compose up -d && docker compose exec backend php artisan migrate && docker compose exec backend vendor/bin/pest`
+      (or via CI) at the first opportunity and fix anything that surfaces.
 
-## Phase 2 — Auth flows + RBAC completeness
+## Phase 2 — Auth flows + RBAC completeness (done, pending live verification)
 
-- [ ] Email verification, password reset, remember-me, rate limiting.
-- [ ] 2FA-ready hooks.
-- [ ] Full role/permission seeding (Super Admin, Tenant Admin, Manager, Support Agent, Client).
+- [x] Login (tenant-slug-aware pre-auth lookup via an audited RLS bypass, generic error message to
+      prevent account/tenant enumeration), logout (explicit Sanctum token revocation + audit).
+- [x] Email verification (signed-URL flow, custom route naming to fit `/api/v1`), password reset
+      (forgot/reset, tenant-scoped, generic response to prevent enumeration).
+- [x] Remember-me (non-expiring token) vs default Sanctum token expiration.
+- [x] Rate limiting on login/password-reset/verification (keyed by email+IP, not IP alone).
+- [x] 2FA-ready columns on `users` (encrypted secret/recovery codes, `two_factor_confirmed_at`) — no
+      verification logic yet, just the storage.
+- [x] Full role/permission seeding (`RoleAndPermissionSeeder`): 5 system-wide roles, a
+      user/tenant-management permission catalog, `UserPolicy` refactored to permission-based checks,
+      `Gate::before` Super Admin bypass.
+- [x] Role/permission change audit logging (Spatie attach/detach events → audit trail).
+- [ ] **Live verification blocked** — same Docker gap as Phase 1; the full auth + RBAC Pest suite has
+      not actually run against Postgres yet.
 
-## Phase 3 — Ticket domain + pool/pull workflow
+## Phase 3 — Ticket domain + pool/pull workflow (next)
 
 - [ ] Ticket state machine (Pending, In Progress, On Hold, Resolved, Closed) with transition
       validation; resolved = read-only, closed = immutable.

@@ -2,34 +2,39 @@
 
 namespace App\Policies;
 
-use App\Enums\RoleName;
 use App\Models\User;
 
+/**
+ * Backed by the permission catalog seeded in RoleAndPermissionSeeder
+ * (users.viewAny/view/create/update/delete), not hardcoded role names — a
+ * Tenant Admin can grant "users.view" to any role without a code change.
+ * Super Admin bypasses all of this via the Gate::before hook in
+ * AppServiceProvider.
+ */
 class UserPolicy
 {
-    private const MANAGES_USERS = [
-        RoleName::SuperAdmin->value,
-        RoleName::TenantAdmin->value,
-        RoleName::Manager->value,
-    ];
-
     public function viewAny(User $actor): bool
     {
-        return $actor->hasAnyRole(self::MANAGES_USERS);
+        return $actor->can('users.viewAny');
     }
 
     public function view(User $actor, User $target): bool
     {
-        return $actor->id === $target->id || $actor->hasAnyRole(self::MANAGES_USERS);
+        return $actor->id === $target->id || $actor->can('users.view');
+    }
+
+    public function create(User $actor): bool
+    {
+        return $actor->can('users.create');
     }
 
     public function update(User $actor, User $target): bool
     {
-        return $actor->id === $target->id || $actor->hasAnyRole(self::MANAGES_USERS);
+        return $actor->id === $target->id || $actor->can('users.update');
     }
 
     public function delete(User $actor, User $target): bool
     {
-        return $actor->id !== $target->id && $actor->hasAnyRole(self::MANAGES_USERS);
+        return $actor->id !== $target->id && $actor->can('users.delete');
     }
 }
