@@ -62,3 +62,16 @@ function createTicketFixture(array $ticketAttributes = []): array
         return [$tenant, $ticketType, $client, $agent, $ticket];
     });
 }
+
+/**
+ * Logs in via the real HTTP endpoint (exercises the actual auth flow, not a
+ * shortcut) and returns the bearer token.
+ */
+function loginAs(string $tenantSlug, string $email, string $password = 'password'): string
+{
+    return test()->postJson('/api/v1/auth/login', [
+        'tenant' => $tenantSlug,
+        'email' => $email,
+        'password' => $password,
+    ])->assertOk()->json('data.token');
+}

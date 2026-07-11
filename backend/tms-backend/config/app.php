@@ -54,6 +54,11 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // The React app (Phase 6) isn't scaffolded yet, so this currently falls
+    // back to the API's own URL — notification links won't be real
+    // clickable frontend routes until FRONTEND_URL is set once that exists.
+    'frontend_url' => env('FRONTEND_URL', env('APP_URL', 'http://localhost')),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

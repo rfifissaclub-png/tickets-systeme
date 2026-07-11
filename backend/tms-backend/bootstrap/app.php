@@ -24,6 +24,15 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    // Not passed as withRouting()'s `channels:` param: that registers
+    // /broadcasting/auth under the "web" (session-cookie) middleware group,
+    // which can never authenticate this API's Sanctum bearer-token clients.
+    // Registering it explicitly here with auth:sanctum is what actually
+    // lets a token-authenticated client subscribe to a private channel.
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['middleware' => ['api', 'auth:sanctum']],
+    )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'tenant.context' => ResolveTenantContext::class,

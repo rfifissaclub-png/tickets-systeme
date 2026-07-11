@@ -29,6 +29,8 @@ class TenantContext
 {
     private ?string $tenantId = null;
 
+    private ?string $userId = null;
+
     private bool $bypassed = false;
 
     public function set(string $tenantId): void
@@ -40,9 +42,28 @@ class TenantContext
         $this->tenantId = $tenantId;
     }
 
+    /**
+     * Independent of tenant binding: notifications are RLS-scoped to
+     * `notifiable_id = app.user_id`, not just tenant_id, so one user's
+     * notifications are never visible to another in the same tenant (a
+     * Manager and a Support Agent don't share an inbox). Bound for every
+     * authenticated request, including Super Admins, who have no tenant.
+     */
+    public function bindUser(string $userId): void
+    {
+        DB::statement('SET app.user_id = ?', [$userId]);
+
+        $this->userId = $userId;
+    }
+
     public function id(): ?string
     {
         return $this->tenantId;
+    }
+
+    public function userId(): ?string
+    {
+        return $this->userId;
     }
 
     public function bound(): bool

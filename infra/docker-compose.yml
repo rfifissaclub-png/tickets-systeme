@@ -100,6 +100,29 @@ services:
       redis:
         condition: service_healthy
 
+  reverb:
+    build:
+      context: ..
+      dockerfile: infra/docker/php/Dockerfile
+      target: development
+    # Binds 0.0.0.0:8080 *inside* this container (REVERB_SERVER_HOST/PORT) —
+    # unrelated to nginx's own 8080, which is a different container. Exposed
+    # to the host on 8085 so a browser (outside Docker) can reach it; the
+    # backend/queue containers reach it over the internal network as
+    # "reverb:8080" instead (see REVERB_HOST/REVERB_PORT in .env).
+    command: php artisan reverb:start
+    ports:
+      - "8085:8080"
+    volumes:
+      - ../backend/tms-backend:/var/www/html
+    env_file:
+      - ../backend/tms-backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   nginx:
     build:
       context: ..

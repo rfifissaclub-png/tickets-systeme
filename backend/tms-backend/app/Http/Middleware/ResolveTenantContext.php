@@ -25,8 +25,12 @@ class ResolveTenantContext
     {
         $user = $request->user();
 
-        if ($user !== null && $user->tenant_id !== null) {
-            $this->tenantContext->set($user->tenant_id);
+        if ($user !== null) {
+            $this->tenantContext->bindUser($user->id);
+
+            if ($user->tenant_id !== null) {
+                $this->tenantContext->set($user->tenant_id);
+            }
         }
 
         return $next($request);

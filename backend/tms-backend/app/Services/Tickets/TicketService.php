@@ -8,8 +8,11 @@ use App\Exceptions\InvalidTicketTransitionException;
 use App\Exceptions\TicketIsReadOnlyException;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Notifications\TicketAssignedNotification;
+use App\Notifications\TicketStatusChangedNotification;
 use App\Services\Audit\AuditService;
 use App\Services\Tenancy\TenantContext;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class TicketService
@@ -63,8 +66,9 @@ class TicketService
     public function transitionStatus(Ticket $ticket, TicketStatus $to): Ticket
     {
         $this->transitions->assertAllowed($ticket->status, $to);
+        $previousStatus = $ticket->status;
 
-        return DB::transaction(function () use ($ticket, $to) {
+        return DB::transaction(function () use ($ticket, $to, $previousStatus) {
             $ticket->status = $to;
 
             if ($to === TicketStatus::Resolved) {
@@ -84,6 +88,8 @@ class TicketService
             $ticket->save();
 
             $this->auditService->log('ticket.status_changed', $ticket, newValues: ['status' => $to->value]);
+
+            $this->notifyStatusChange($ticket, $previousStatus);
 
             return $ticket;
         });
@@ -112,6 +118,10 @@ class TicketService
 
             $this->auditService->log('ticket.assigned', $ticket, newValues: ['agent_id' => $agent->id]);
 
+            if ($agent->id !== Auth::id()) {
+                $agent->notify(new TicketAssignedNotification($ticket));
+            }
+
             return $ticket;
         });
     }
@@ -139,5 +149,21 @@ class TicketService
 
             return $ticket;
         });
+    }
+
+    /**
+     * Notifies the client and (if assigned) the agent — but never whoever
+     * just performed the transition themselves, no one needs telling about
+     * their own action.
+     */
+    private function notifyStatusChange(Ticket $ticket, TicketStatus $previousStatus): void
+    {
+        $actorId = Auth::id();
+
+        foreach (array_filter([$ticket->client, $ticket->agent]) as $recipient) {
+            if ($recipient->id !== $actorId) {
+                $recipient->notify(new TicketStatusChangedNotification($ticket, $previousStatus));
+            }
+        }
     }
 }

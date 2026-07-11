@@ -7,6 +7,7 @@ use App\Http\Requests\Tickets\StoreTicketCommentRequest;
 use App\Http\Resources\TicketCommentResource;
 use App\Models\Ticket;
 use App\Models\TicketComment;
+use App\Notifications\TicketCommentAddedNotification;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,6 +47,13 @@ class TicketCommentController extends Controller
             // reporting (Phase 5) — set once, never overwritten.
             if (! $isInternal && $ticket->first_response_at === null && $request->user()->id !== $ticket->client_id) {
                 $ticket->forceFill(['first_response_at' => now()])->save();
+            }
+
+            // Internal notes never notify the client — notify whichever
+            // side of the conversation didn't just post.
+            if (! $isInternal) {
+                $recipient = $request->user()->id === $ticket->client_id ? $ticket->agent : $ticket->client;
+                $recipient?->notify(new TicketCommentAddedNotification($comment));
             }
 
             return $comment;

@@ -69,10 +69,42 @@ This is a multi-phase build. Each phase is scoped to land as a reviewable, teste
       test against the real stack — a single-process Pest run can only prove the logical guard,
       not the actual lock contention.
 
-## Phase 4 — Attachments, notifications, realtime
+## Phase 4 — Attachments, notifications, realtime (done, pending live verification)
 
-- [ ] Secure file uploads (MIME validation, signed URLs, private storage).
-- [ ] Notifications: database + email; Laravel Reverb realtime channel.
+- [x] Secure file uploads: `FileUploadService` validates real file content (fileinfo `mimetypes:`,
+      not just the client extension/header) against an allowlist, generates a random storage key
+      per file (never derived from the client filename — sidesteps path traversal / double-extension
+      tricks entirely), stores on the private `s3` disk (MinIO in dev). Downloads go through a
+      dedicated endpoint that mints a fresh short-lived presigned URL on demand, not a static link
+      embedded in list responses.
+- [x] `ticket_attachments` is tenant-owned and RLS-protected like every other domain table; its
+      policy reuses `TicketPolicy`/`TicketCommentPolicy` rules (viewing an attachment = viewing the
+      ticket, uploading = same rule as commenting, including the Closed-ticket block).
+- [x] Notifications: a **custom** tenant-owned `notifications` table/model/channel
+      (`TenantDatabaseChannel`), not Laravel's stock polymorphic-only notifications table — the spec
+      requires notifications to be tenant-owned like everything else, which the stock table has no
+      concept of. RLS on this table is scoped to **both** `tenant_id` and `notifiable_id` (via a new
+      `app.user_id` session variable set alongside `app.tenant_id`) — a personal inbox, so one user
+      in a tenant can never read another's notifications even with full tenant access.
+- [x] Three notification classes (assigned, comment added, status changed) dispatched from the
+      ticket services/controller, each firing database + mail + broadcast, and each careful not to
+      notify whoever just performed the action themselves (e.g. pulling your own ticket from the
+      pool doesn't notify you).
+- [x] Laravel Reverb installed and wired for realtime: private per-user channel
+      (`tenant.{tenantId}.user.{userId}`, see `User::receivesBroadcastNotificationsOn()`), channel
+      authorization added to `routes/channels.php`. Found and fixed two bugs in Laravel's own
+      broadcasting scaffolding while wiring this up: the default channel-auth closure casts UUIDs to
+      `(int)` (always evaluates true — an auth bypass), and `withRouting(channels: ...)` registers
+      `/broadcasting/auth` under session-cookie `web` middleware, which can never authenticate this
+      API's Sanctum bearer-token clients — replaced with an explicit `withBroadcasting(...,
+      ['middleware' => ['api', 'auth:sanctum']])` call.
+- [x] `infra/docker-compose.yml` gained a `reverb` service (internal port 8080, host-mapped to 8085
+      for a future browser client) alongside the existing MinIO/Mailpit from Phase 1.
+- [ ] **Live verification blocked** — same Docker gap as Phases 1–3. Additionally: actual WebSocket
+      connectivity to Reverb and S3 presigned URL generation against real MinIO have *no* test
+      coverage at all yet (`Storage::fake()` covers the attachment storage logic, but not real S3
+      signing; there is no practical way to test a live WebSocket handshake in Pest) — both need
+      manual verification against the running stack, not just `vendor/bin/pest`.
 
 ## Phase 5 — Search + reporting
 
