@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Tenancy\TenantContext;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -64,6 +65,24 @@ class AppServiceProvider extends ServiceProvider
                 now()->addMinutes(60),
                 ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())],
             );
+        });
+
+        // Without this, ResetPassword's default resetUrl() calls
+        // route('password.reset', ...) — a route that doesn't exist in this
+        // API-only app (there's no server-rendered reset form) — and throws
+        // as soon as the notification is actually rendered. Point it at the
+        // frontend's reset-password page instead, carrying the tenant slug
+        // so ResetPasswordController's tenant-scoped lookup has what it
+        // needs (Password::sendResetLink was called with tenant_id, but the
+        // frontend form re-derives the slug from this link, not the id).
+        ResetPassword::createUrlUsing(function (User $notifiable, string $token) {
+            $query = http_build_query([
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+                'tenant' => $notifiable->tenant?->slug,
+            ]);
+
+            return rtrim(config('app.frontend_url'), '/')."/reset-password?{$query}";
         });
     }
 
