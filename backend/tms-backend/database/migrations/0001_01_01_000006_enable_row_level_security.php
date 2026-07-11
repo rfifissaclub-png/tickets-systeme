@@ -27,6 +27,25 @@ return new class extends Migration
      * Postgres RLS does not apply to the table's owning role, and the Laravel
      * app connects as the same role that ran these migrations (and therefore
      * owns the tables). Without FORCE, RLS would silently do nothing.
+     *
+     * Every policy predicate wraps the setting in NULLIF(..., '')::uuid rather
+     * than casting current_setting(...) directly: `app.tenant_id` is a custom
+     * ("placeholder") GUC, not a built-in one, and Postgres's RESET on a
+     * placeholder GUC that was previously SET on this session reverts it to
+     * an empty string, not SQL NULL — current_setting(..., true) (missing_ok)
+     * only returns true NULL if the setting was *never* SET at all on this
+     * connection. A bare `''::uuid` cast then throws a hard "invalid input
+     * syntax for type uuid" error, which — critically — happens while
+     * evaluating the left side of `tenant_id = ... OR bypass_rls = 'on'`,
+     * before the bypass branch is ever reached, so an authorized bypass
+     * cannot save a request from it either. This only ever surfaces when a
+     * connection is reused across more than one logical "request" that
+     * resets tenant context on it (this app's own Pest suite included, via
+     * RefreshDatabase + tests/Pest.php's `RESET app.tenant_id` between
+     * tests) — a fresh PHP-FPM connection that never calls SET at all
+     * behaves fine either way, which is exactly why this went undetected
+     * until the test suite ran against a real, connection-reused Postgres
+     * session rather than being verified only by reading the SQL.
      */
     public function up(): void
     {
@@ -45,7 +64,7 @@ return new class extends Migration
             DB::statement("
                 CREATE POLICY {$table}_tenant_isolation ON {$table}
                 FOR SELECT USING (
-                    {$column} = current_setting('app.tenant_id', true)::uuid
+                    {$column} = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 )
             ");
@@ -53,10 +72,10 @@ return new class extends Migration
             DB::statement("
                 CREATE POLICY {$table}_tenant_write ON {$table}
                 FOR UPDATE USING (
-                    {$column} = current_setting('app.tenant_id', true)::uuid
+                    {$column} = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 ) WITH CHECK (
-                    {$column} = current_setting('app.tenant_id', true)::uuid
+                    {$column} = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 )
             ");
@@ -64,7 +83,7 @@ return new class extends Migration
             DB::statement("
                 CREATE POLICY {$table}_tenant_delete ON {$table}
                 FOR DELETE USING (
-                    {$column} = current_setting('app.tenant_id', true)::uuid
+                    {$column} = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 )
             ");
@@ -78,7 +97,7 @@ return new class extends Migration
             DB::statement("
                 CREATE POLICY {$table}_tenant_insert ON {$table}
                 FOR INSERT WITH CHECK (
-                    {$column} = current_setting('app.tenant_id', true)::uuid
+                    {$column} = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 )
             ");
@@ -104,7 +123,7 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY audit_logs_tenant_isolation ON audit_logs
             FOR SELECT USING (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");

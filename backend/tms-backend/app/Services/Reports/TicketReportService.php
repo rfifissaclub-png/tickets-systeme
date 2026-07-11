@@ -107,9 +107,16 @@ class TicketReportService
     {
         $tenantId = $this->tenantContext->requireTenant();
 
+        // $to is a calendar-day boundary (e.g. from a plain "2026-02-02"
+        // query param, parsed to that day's midnight) — using it as-is for
+        // whereBetween's upper bound would exclude every row created later
+        // that same day. The day-bucket loop below still stops at $to's
+        // calendar date; only the query's own range needs to reach its end.
+        $queryTo = $to->copy()->endOfDay();
+
         $created = Ticket::query()
             ->where('tenant_id', $tenantId)
-            ->whereBetween('created_at', [$from, $to])
+            ->whereBetween('created_at', [$from, $queryTo])
             ->selectRaw('DATE(created_at) as day, count(*) as created_count')
             ->groupBy('day')
             ->pluck('created_count', 'day');
@@ -117,7 +124,7 @@ class TicketReportService
         $resolved = Ticket::query()
             ->where('tenant_id', $tenantId)
             ->whereNotNull('resolved_at')
-            ->whereBetween('resolved_at', [$from, $to])
+            ->whereBetween('resolved_at', [$from, $queryTo])
             ->selectRaw('DATE(resolved_at) as day, count(*) as resolved_count')
             ->groupBy('day')
             ->pluck('resolved_count', 'day');

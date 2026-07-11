@@ -1,11 +1,13 @@
 <?php
 
+use App\Services\Tenancy\TenantContext;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 
 it('verifies the email via a valid signed link', function () {
-    [, $user] = createTenantWithUser(['email_verified_at' => null]);
+    [$tenant, $user] = createTenantWithUser(['email_verified_at' => null]);
+    app(TenantContext::class)->set($tenant->id);
 
     $url = URL::temporarySignedRoute(
         'api.v1.auth.verification.verify',
@@ -19,7 +21,8 @@ it('verifies the email via a valid signed link', function () {
 });
 
 it('rejects a verification link with a tampered hash', function () {
-    [, $user] = createTenantWithUser(['email_verified_at' => null]);
+    [$tenant, $user] = createTenantWithUser(['email_verified_at' => null]);
+    app(TenantContext::class)->set($tenant->id);
 
     $url = URL::temporarySignedRoute(
         'api.v1.auth.verification.verify',

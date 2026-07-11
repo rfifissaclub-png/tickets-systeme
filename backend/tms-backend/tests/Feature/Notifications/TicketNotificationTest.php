@@ -28,9 +28,13 @@ it('notifies the agent when a manager directly assigns a ticket', function () {
 it('does not notify an agent who pulls a ticket for themselves', function () {
     NotificationFacade::fake();
 
-    [$tenant, , , $agent, $ticket] = createTicketFixture();
+    [$tenant, $ticketType, , $agent, $ticket] = createTicketFixture();
 
     app(TenantContext::class)->set($tenant->id);
+    // A fresh, roleless agent is skill-gated (fails closed) by
+    // TicketPoolService::isSkillGated() — qualify them for this ticket's
+    // type first, same as TicketPoolTest's equivalent fixture setup.
+    $agent->qualifiedTicketTypes()->attach($ticketType->id, ['tenant_id' => $tenant->id]);
 
     app(TicketPoolService::class)->pull($ticket->id, $agent);
 

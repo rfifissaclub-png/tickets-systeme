@@ -37,11 +37,14 @@ class DatabaseSeeder extends Seeder
 
         // Provisioning a Super Admin (tenant_id IS NULL) and a brand new
         // tenant both require the bypass — see TenantContext::bypass().
-        $tenantContext->bypass('local dev seed: platform super admin', function () {
+        // Spatie's team resolver also needs the reserved platform team
+        // bound before assignRole() — see TenantContext::PLATFORM_TEAM_ID.
+        $tenantContext->bypass('local dev seed: platform super admin', function () use ($tenantContext) {
             $superAdmin = User::factory()->superAdmin()->create([
                 'name' => 'Platform Super Admin',
                 'email' => 'super-admin@tms.local',
             ]);
+            $tenantContext->bindPlatformTeam();
             $superAdmin->assignRole(RoleName::SuperAdmin->value);
         });
 

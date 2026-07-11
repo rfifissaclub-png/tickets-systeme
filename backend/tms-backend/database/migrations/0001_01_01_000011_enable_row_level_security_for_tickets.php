@@ -21,7 +21,7 @@ return new class extends Migration
             DB::statement("
                 CREATE POLICY {$table}_tenant_isolation ON {$table}
                 FOR SELECT USING (
-                    tenant_id = current_setting('app.tenant_id', true)::uuid
+                    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 )
             ");
@@ -29,10 +29,10 @@ return new class extends Migration
             DB::statement("
                 CREATE POLICY {$table}_tenant_write ON {$table}
                 FOR UPDATE USING (
-                    tenant_id = current_setting('app.tenant_id', true)::uuid
+                    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 ) WITH CHECK (
-                    tenant_id = current_setting('app.tenant_id', true)::uuid
+                    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 )
             ");
@@ -40,7 +40,7 @@ return new class extends Migration
             DB::statement("
                 CREATE POLICY {$table}_tenant_delete ON {$table}
                 FOR DELETE USING (
-                    tenant_id = current_setting('app.tenant_id', true)::uuid
+                    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 )
             ");
@@ -48,7 +48,7 @@ return new class extends Migration
             DB::statement("
                 CREATE POLICY {$table}_tenant_insert ON {$table}
                 FOR INSERT WITH CHECK (
-                    tenant_id = current_setting('app.tenant_id', true)::uuid
+                    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                     OR current_setting('app.bypass_rls', true) = 'on'
                 )
             ");

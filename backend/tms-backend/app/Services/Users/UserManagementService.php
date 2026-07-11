@@ -224,7 +224,12 @@ class UserManagementService
      * their tenant; a Super Admin's never is (they have no tenant of their
      * own — see ResolveTenantContext), so role/skill writes on their behalf
      * must set it explicitly for the target's tenant, or the pivot row
-     * would be created scoped to no tenant at all.
+     * would be created scoped to no tenant at all. `$tenantId` is passed
+     * through TenantContext::teamIdFor(), which substitutes the reserved
+     * platform team for a null (tenant-less target) — `team_foreign_key` is
+     * part of the composite primary key on the assignment pivot tables, so
+     * Postgres rejects a literal null there outright (see
+     * TenantContext::PLATFORM_TEAM_ID for the full explanation).
      *
      * @template T
      *
@@ -236,7 +241,7 @@ class UserManagementService
         $registrar = app(PermissionRegistrar::class);
         $previous = $registrar->getPermissionsTeamId();
 
-        $registrar->setPermissionsTeamId($tenantId);
+        $registrar->setPermissionsTeamId(TenantContext::teamIdFor($tenantId));
 
         try {
             return $callback();

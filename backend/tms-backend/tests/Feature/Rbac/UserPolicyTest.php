@@ -32,7 +32,9 @@ it('lets a Manager view users but denies a Client', function () {
         ->and($client->can('viewAny', User::class))->toBeFalse()
         ->and($client->can('view', $manager))->toBeFalse()
         ->and($client->can('view', $client))->toBeTrue()
-        ->and($manager->can('delete', $client))->toBeTrue()
+        // Deliberate: user deletion is reserved for Tenant Admin, same as
+        // users.manageRoles — see RoleAndPermissionSeeder::ROLE_PERMISSIONS.
+        ->and($manager->can('delete', $client))->toBeFalse()
         ->and($manager->can('delete', $manager))->toBeFalse();
 });
 
@@ -61,6 +63,7 @@ it('scopes role assignments per tenant even though role definitions are system-w
 
 it('lets Super Admin bypass every authorization check regardless of permissions', function () {
     $superAdmin = app(TenantContext::class)->bypass('test fixture setup', fn () => User::factory()->superAdmin()->create());
+    app(TenantContext::class)->bindPlatformTeam();
     $superAdmin->assignRole(RoleName::SuperAdmin->value);
 
     [, $otherUser] = createTenantWithUser();

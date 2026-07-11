@@ -79,7 +79,7 @@ class TicketService
                 $ticket->closed_at = now();
             }
 
-            if ($to === TicketStatus::InProgress && $ticket->resolved_at !== null && $ticket->getOriginal('status') === TicketStatus::Resolved->value) {
+            if ($to === TicketStatus::InProgress && $ticket->resolved_at !== null && $ticket->getOriginal('status') === TicketStatus::Resolved) {
                 // Reopened from Resolved: clear the resolved timestamp, it no
                 // longer reflects reality.
                 $ticket->resolved_at = null;

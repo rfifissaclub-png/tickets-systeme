@@ -71,11 +71,19 @@ it('never allows an UPDATE or DELETE against audit_logs, even via bypass', funct
         ]),
     );
 
+    // Postgres RLS doesn't raise an error for an UPDATE/DELETE that matches
+    // no policy-visible rows — it silently affects 0 rows, the same as any
+    // other WHERE clause matching nothing. The absence of an UPDATE/DELETE
+    // policy (see enable_row_level_security's own comment) still makes the
+    // row genuinely immutable; that's provable by the affected-row count
+    // and the row's contents afterward, not by an exception.
     app(TenantContext::class)->bypass('test: tamper attempt', function () use ($log) {
-        expect(fn () => DB::table('audit_logs')->where('id', $log->id)->update(['action' => 'tampered']))
-            ->toThrow(QueryException::class);
+        $updated = DB::table('audit_logs')->where('id', $log->id)->update(['action' => 'tampered']);
+        expect($updated)->toBe(0);
 
-        expect(fn () => DB::table('audit_logs')->where('id', $log->id)->delete())
-            ->toThrow(QueryException::class);
+        $deleted = DB::table('audit_logs')->where('id', $log->id)->delete();
+        expect($deleted)->toBe(0);
     });
+
+    expect(AuditLog::query()->find($log->id)->action)->toBe('test.action');
 });

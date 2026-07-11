@@ -120,6 +120,12 @@ it('lets staff with tickets.viewInternal see and post internal comments', functi
 
     app(TenantContext::class)->set($tenant->id);
     $agent->assignRole(RoleName::SupportAgent->value);
+    // SupportAgent deliberately has no blanket tickets.update (see
+    // RoleAndPermissionSeeder) — posting a comment requires ownership, so
+    // the ticket must actually be assigned to this agent, matching how a
+    // real agent would encounter a ticket they can leave an internal note
+    // on rather than an arbitrary unassigned one.
+    $ticket->forceFill(['agent_id' => $agent->id])->save();
 
     TicketComment::factory()->for($tenant)->for($ticket)->for($agent, 'author')->internal()
         ->create(['body' => 'Internal note']);

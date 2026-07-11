@@ -31,7 +31,7 @@ Route::prefix('auth')->name('auth.')->group(function () {
         ->middleware(['signed', 'throttle:verification'])
         ->name('verification.verify');
 
-    Route::middleware(['auth:sanctum', 'tenant.context'])->group(function () {
+    Route::middleware(['auth.prime', 'auth:sanctum', 'tenant.context'])->group(function () {
         Route::post('/logout', LogoutController::class)->name('logout');
 
         Route::post('/email/verification-notification', ResendVerificationController::class)
@@ -40,7 +40,7 @@ Route::prefix('auth')->name('auth.')->group(function () {
     });
 });
 
-Route::middleware(['auth:sanctum', 'tenant.context'])->group(function () {
+Route::middleware(['auth.prime', 'auth:sanctum', 'tenant.context'])->group(function () {
     Route::get('/me', MeController::class)->name('me');
 
     Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');

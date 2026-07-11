@@ -18,7 +18,7 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY ticket_attachments_tenant_isolation ON ticket_attachments
             FOR SELECT USING (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");
@@ -26,10 +26,10 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY ticket_attachments_tenant_write ON ticket_attachments
             FOR UPDATE USING (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             ) WITH CHECK (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");
@@ -37,7 +37,7 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY ticket_attachments_tenant_delete ON ticket_attachments
             FOR DELETE USING (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");
@@ -45,7 +45,7 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY ticket_attachments_tenant_insert ON ticket_attachments
             FOR INSERT WITH CHECK (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");
@@ -62,8 +62,8 @@ return new class extends Migration
             CREATE POLICY notifications_owner_isolation ON notifications
             FOR SELECT USING (
                 (
-                    tenant_id = current_setting('app.tenant_id', true)::uuid
-                    AND notifiable_id = current_setting('app.user_id', true)::uuid
+                    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+                    AND notifiable_id = NULLIF(current_setting('app.user_id', true), '')::uuid
                 )
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
@@ -73,14 +73,14 @@ return new class extends Migration
             CREATE POLICY notifications_owner_write ON notifications
             FOR UPDATE USING (
                 (
-                    tenant_id = current_setting('app.tenant_id', true)::uuid
-                    AND notifiable_id = current_setting('app.user_id', true)::uuid
+                    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+                    AND notifiable_id = NULLIF(current_setting('app.user_id', true), '')::uuid
                 )
                 OR current_setting('app.bypass_rls', true) = 'on'
             ) WITH CHECK (
                 (
-                    tenant_id = current_setting('app.tenant_id', true)::uuid
-                    AND notifiable_id = current_setting('app.user_id', true)::uuid
+                    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+                    AND notifiable_id = NULLIF(current_setting('app.user_id', true), '')::uuid
                 )
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
@@ -95,7 +95,7 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY notifications_insert ON notifications
             FOR INSERT WITH CHECK (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");

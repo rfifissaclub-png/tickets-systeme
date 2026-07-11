@@ -38,7 +38,7 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY agent_skills_tenant_isolation ON agent_skills
             FOR SELECT USING (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");
@@ -46,10 +46,10 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY agent_skills_tenant_write ON agent_skills
             FOR UPDATE USING (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             ) WITH CHECK (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");
@@ -57,7 +57,7 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY agent_skills_tenant_delete ON agent_skills
             FOR DELETE USING (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");
@@ -65,7 +65,7 @@ return new class extends Migration
         DB::statement("
             CREATE POLICY agent_skills_tenant_insert ON agent_skills
             FOR INSERT WITH CHECK (
-                tenant_id = current_setting('app.tenant_id', true)::uuid
+                tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
                 OR current_setting('app.bypass_rls', true) = 'on'
             )
         ");

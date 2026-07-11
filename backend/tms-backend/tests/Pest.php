@@ -48,6 +48,10 @@ function createSuperAdmin(): User
 {
     return app(TenantContext::class)->bypass('test fixture setup', function () {
         $superAdmin = User::factory()->superAdmin()->create();
+        // Spatie's team resolver needs the reserved platform team bound
+        // before assignRole() for a tenant-less user — see
+        // TenantContext::PLATFORM_TEAM_ID.
+        app(TenantContext::class)->bindPlatformTeam();
         $superAdmin->assignRole(RoleName::SuperAdmin->value);
 
         return $superAdmin;

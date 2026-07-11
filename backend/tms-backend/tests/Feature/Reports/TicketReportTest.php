@@ -122,6 +122,7 @@ it('lets a Super Admin see ticket counts across all tenants', function () {
     Ticket::factory()->for($tenantB)->create(['ticket_type_id' => $ticketTypeB->id, 'client_id' => $clientB->id]);
 
     $superAdmin = app(TenantContext::class)->bypass('test fixture setup', fn () => User::factory()->superAdmin()->create());
+    app(TenantContext::class)->bindPlatformTeam();
     $superAdmin->assignRole(RoleName::SuperAdmin->value);
 
     $token = loginAs('', $superAdmin->email);

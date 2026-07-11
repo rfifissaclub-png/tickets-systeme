@@ -91,9 +91,20 @@ class TicketPolicy
      * against the row-locked ticket, the same belt-and-suspenders pattern
      * as the read-only checks elsewhere in this policy.
      */
+    /**
+     * Deliberately does not check $ticket->isInPool(): whether this specific
+     * ticket is *still* available is a race-prone, point-in-time read on an
+     * unlocked model, and TicketPoolService::pull() already re-checks it
+     * inside a locked transaction, throwing TicketAlreadyAssignedException
+     * (409) when it's not. This policy only gates whether the actor is
+     * generically allowed to pull tickets of this type at all (permission +
+     * skill) — folding the availability check in here would turn "someone
+     * else already grabbed it" into a 403 (authorization denied) instead of
+     * the correct 409 (conflict), for every request that loses the race.
+     */
     public function pull(User $actor, Ticket $ticket): bool
     {
-        if (! $ticket->isInPool() || ! $actor->can('tickets.pull')) {
+        if (! $actor->can('tickets.pull')) {
             return false;
         }
 
