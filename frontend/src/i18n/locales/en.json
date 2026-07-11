@@ -75,8 +75,19 @@
     "welcomeBack": "Welcome back",
     "welcomeBackNamed": "Welcome back, {{name}}",
     "subtitle": "Here's what's happening across your tickets.",
-    "widgetsTitle": "Dashboard widgets are coming in the next phase",
-    "widgetsDescription": "Ticket lists, the pool, and KPI reports land here next."
+    "totalTickets": "Total tickets",
+    "openTickets": "Open tickets",
+    "avgFirstResponse": "Avg first response",
+    "avgResolution": "Avg resolution",
+    "myTickets": "My tickets",
+    "myOpenTickets": "My open tickets",
+    "viewAll": "View all",
+    "noTicketsTitle": "No open tickets",
+    "ticketPool": "Ticket pool",
+    "availableToPull": "available to pull",
+    "goToPool": "Go to pool",
+    "needHelp": "Need help with something?",
+    "newTicket": "New ticket"
   },
   "tickets": {
     "status": {

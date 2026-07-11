@@ -338,14 +338,22 @@ Types page had a nav entry and a fully-built backend CRUD API since Phase 6.2 bu
       re-validated with `@redocly/cli lint`, 0 errors. `docs/er-diagram.md` gained the `agent_skills`
       table and relationships, re-rendered with a real `mmdc` run. `docs/architecture.md` gained a
       "Tenant & user management" section and an expanded pool/pull section covering skill routing.
+- [x] Dashboard: replaced the literal placeholder (`DashboardPage` had shipped every phase since 6.1
+      saying "widgets are coming in the next phase" — the actual KPI work landed on `ReportsPage`
+      instead, and the dashboard itself was simply never revisited) with role-appropriate widgets
+      reusing existing endpoints only, no new backend work: KPI stat tiles (Manager/Tenant
+      Admin/Super Admin, reusing `useReportOverview`), a "my tickets" card (assigned-to-me for staff
+      roles, filed-by-me for Clients, reusing `useTickets`), and either a ticket-pool count + link
+      (staff) or a "New ticket" call-to-action (Client). `tsc -b`/`oxlint`/production build all clean,
+      dev server confirmed serving `/` via curl, i18n key parity re-verified (257/257).
 - [ ] **Live verification blocked** — same Docker/browser gap as every prior phase. Static verification
       only: `php -l` on every touched file, Pint, `composer validate`, a full `artisan list` boot
       check, `artisan route:list` confirming all 12 new routes registered, every new/updated Pest test
       correctly collected (fails only on "could not find driver" — no live Postgres here, not a code
       problem) — full list in the Phase 8 commit message. `tsc -b`, `oxlint`, and a production
       `vite build` all pass on the frontend. None of this has been exercised against a live stack or a
-      real browser: the create-user/assign-roles/assign-skills flows and the pool's actual filtered
-      contents have never been seen rendered, only reviewed as code.
+      real browser: the create-user/assign-roles/assign-skills flows, the pool's actual filtered
+      contents, and the new dashboard widgets have never been seen rendered, only reviewed as code.
 
 ## Future roadmap (post-MVP, architecture should not block these)
 

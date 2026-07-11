@@ -75,8 +75,19 @@
     "welcomeBack": "Bon retour",
     "welcomeBackNamed": "Bon retour, {{name}}",
     "subtitle": "Voici ce qui se passe sur vos tickets.",
-    "widgetsTitle": "Les widgets du tableau de bord arrivent dans la prochaine phase",
-    "widgetsDescription": "Les listes de tickets, la réserve et les rapports de KPI arriveront ici prochainement."
+    "totalTickets": "Total des tickets",
+    "openTickets": "Tickets ouverts",
+    "avgFirstResponse": "Temps moyen de première réponse",
+    "avgResolution": "Temps moyen de résolution",
+    "myTickets": "Mes tickets",
+    "myOpenTickets": "Mes tickets ouverts",
+    "viewAll": "Tout voir",
+    "noTicketsTitle": "Aucun ticket ouvert",
+    "ticketPool": "Réserve de tickets",
+    "availableToPull": "disponibles à prendre",
+    "goToPool": "Aller à la réserve",
+    "needHelp": "Besoin d'aide pour quelque chose ?",
+    "newTicket": "Nouveau ticket"
   },
   "tickets": {
     "status": {
