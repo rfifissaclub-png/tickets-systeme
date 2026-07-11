@@ -46,12 +46,28 @@ This is a multi-phase build. Each phase is scoped to land as a reviewable, teste
 - [ ] **Live verification blocked** — same Docker gap as Phase 1; the full auth + RBAC Pest suite has
       not actually run against Postgres yet.
 
-## Phase 3 — Ticket domain + pool/pull workflow (next)
+## Phase 3 — Ticket domain + pool/pull workflow (done, pending live verification)
 
-- [ ] Ticket state machine (Pending, In Progress, On Hold, Resolved, Closed) with transition
-      validation; resolved = read-only, closed = immutable.
-- [ ] Ticket pool + atomic pull-to-assign workflow (row locking, transaction-safe).
-- [ ] Ticket types, clients, agents domain models.
+- [x] Ticket state machine (Pending, InProgress, OnHold, Resolved, Closed):
+      `TicketStatusTransitions` enforces the graph at the application layer; the
+      `enforce_ticket_immutability` Postgres trigger enforces Resolved read-only /
+      Closed fully-immutable a second time at the database layer regardless of code path
+      (soft-delete of a Closed ticket is the one allowed exception).
+- [x] Ticket pool + atomic pull-to-assign workflow: `TicketPoolService::pull()` uses
+      `SELECT ... FOR UPDATE` inside a transaction so two agents racing for the same ticket
+      can't both win — the loser gets a clean 409, not a silent double-assignment.
+- [x] Domain models: `TicketType`, `Ticket`, `TicketComment` (internal vs. client-visible),
+      all tenant-owned and RLS-protected. Clients/Agents are Users with the corresponding
+      role, not separate tables (matches how Users/roles are already modeled).
+- [x] Permission catalog extended (`tickets.*`, `ticket_types.manage`); an assigned agent can
+      always edit their own ticket via ownership, never a blanket permission — one agent
+      cannot edit another's ticket by default.
+- [x] `first_response_at` tracked (first non-internal staff reply) for Phase 5 SLA reporting.
+- [ ] **Live verification blocked** — same Docker gap as Phases 1–2. The state-machine/trigger
+      tests, pool-pull tests, and access-control tests have not run against real Postgres yet.
+      True concurrent-transaction race testing for pull() also needs a live, multi-connection
+      test against the real stack — a single-process Pest run can only prove the logical guard,
+      not the actual lock contention.
 
 ## Phase 4 — Attachments, notifications, realtime
 

@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Tenant;
+use App\Models\Ticket;
+use App\Models\TicketType;
 use App\Models\User;
 use App\Services\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,5 +35,30 @@ function createTenantWithUser(array $userAttributes = []): array
         $user = User::factory()->for($tenant)->create($userAttributes);
 
         return [$tenant, $user];
+    });
+}
+
+/**
+ * A tenant with a ticket type, a client, a support agent, and one Pending,
+ * unassigned ticket owned by the client. Role seeding/assignment is left to
+ * the caller (not every ticket test needs RBAC) — see RoleAndPermissionSeeder.
+ *
+ * @param  array<string, mixed>  $ticketAttributes
+ * @return array{0: Tenant, 1: TicketType, 2: User client, 3: User agent, 4: Ticket}
+ */
+function createTicketFixture(array $ticketAttributes = []): array
+{
+    return app(TenantContext::class)->bypass('test fixture setup', function () use ($ticketAttributes) {
+        $tenant = Tenant::factory()->create();
+        $ticketType = TicketType::factory()->for($tenant)->create();
+        $client = User::factory()->for($tenant)->create();
+        $agent = User::factory()->for($tenant)->create();
+
+        $ticket = Ticket::factory()->for($tenant)->create(array_merge([
+            'ticket_type_id' => $ticketType->id,
+            'client_id' => $client->id,
+        ], $ticketAttributes));
+
+        return [$tenant, $ticketType, $client, $agent, $ticket];
     });
 }

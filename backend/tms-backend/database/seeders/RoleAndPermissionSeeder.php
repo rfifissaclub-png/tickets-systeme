@@ -10,9 +10,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Seeds the five fixed platform roles as system-wide (tenant_id IS NULL)
- * roles, visible to every tenant, plus the permission catalog buildable so
- * far (user/tenant management — ticket-domain permissions land in Phase 3
- * alongside the ticket model itself).
+ * roles, visible to every tenant, plus the permission catalog.
  *
  * Super Admin is granted every permission here for consistency with
  * hasPermissionTo() checks, even though Gate::before in AppServiceProvider
@@ -30,6 +28,15 @@ class RoleAndPermissionSeeder extends Seeder
         'tenants.view',
         'tenants.update',
         'tenants.manage',
+        'tickets.viewAny',
+        'tickets.view',
+        'tickets.create',
+        'tickets.update',
+        'tickets.delete',
+        'tickets.assign',
+        'tickets.pull',
+        'tickets.viewInternal',
+        'ticket_types.manage',
     ];
 
     /** @var array<string, list<string>> */
@@ -37,10 +44,27 @@ class RoleAndPermissionSeeder extends Seeder
         RoleName::TenantAdmin->value => [
             'users.viewAny', 'users.view', 'users.create', 'users.update', 'users.delete',
             'tenants.view', 'tenants.update',
+            'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.update', 'tickets.delete',
+            'tickets.assign', 'tickets.viewInternal', 'ticket_types.manage',
         ],
-        RoleName::Manager->value => ['users.viewAny', 'users.view', 'users.update'],
-        RoleName::SupportAgent->value => ['users.view'],
-        RoleName::Client->value => [],
+        RoleName::Manager->value => [
+            'users.viewAny', 'users.view', 'users.update',
+            'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.update',
+            'tickets.assign', 'tickets.viewInternal',
+        ],
+        // Deliberately no tickets.update: an agent's ability to edit a
+        // ticket comes only from TicketPolicy's ownership check (they're
+        // the assigned agent), not a blanket permission — one agent should
+        // not be able to freely edit another agent's ticket.
+        RoleName::SupportAgent->value => [
+            'users.view',
+            'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.pull', 'tickets.viewInternal',
+        ],
+        // Deliberately no tickets.view/viewAny: a Client's access to their
+        // own tickets comes only from TicketPolicy's ownership check, never
+        // from a permission — granting tickets.view here would let any
+        // Client read any other client's tickets in the tenant.
+        RoleName::Client->value => ['tickets.create'],
     ];
 
     public function run(): void

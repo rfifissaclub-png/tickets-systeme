@@ -1,5 +1,8 @@
 <?php
 
+use App\Exceptions\InvalidTicketTransitionException;
+use App\Exceptions\TicketAlreadyAssignedException;
+use App\Exceptions\TicketIsReadOnlyException;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -54,6 +57,30 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return ApiResponse::error(message: $e->getMessage() ?: 'This action is unauthorized.', status: 403, code: 'forbidden');
+        });
+
+        $exceptions->render(function (TicketAlreadyAssignedException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return ApiResponse::error(message: $e->getMessage(), status: 409, code: 'ticket_already_assigned');
+        });
+
+        $exceptions->render(function (TicketIsReadOnlyException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return ApiResponse::error(message: $e->getMessage(), status: 409, code: 'ticket_read_only');
+        });
+
+        $exceptions->render(function (InvalidTicketTransitionException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return ApiResponse::error(message: $e->getMessage(), status: 422, code: 'invalid_ticket_transition');
         });
 
         $exceptions->render(function (ModelNotFoundException $e, Request $request) {
