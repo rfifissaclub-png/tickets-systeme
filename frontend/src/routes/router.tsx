@@ -5,6 +5,10 @@ import { ForgotPasswordPage } from '@/pages/auth/forgot-password-page'
 import { LoginPage } from '@/pages/auth/login-page'
 import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
 import { DashboardPage } from '@/pages/dashboard/dashboard-page'
+import { TicketCreatePage } from '@/pages/tickets/ticket-create-page'
+import { TicketDetailPage } from '@/pages/tickets/ticket-detail-page'
+import { TicketListPage } from '@/pages/tickets/ticket-list-page'
+import { TicketPoolPage } from '@/pages/tickets/ticket-pool-page'
 
 import { GuestRoute } from './guest-route'
 import { ProtectedRoute } from './protected-route'
@@ -23,7 +27,13 @@ export const router = createBrowserRouter([
     children: [
       {
         element: <AppShell />,
-        children: [{ path: '/', element: <DashboardPage /> }],
+        children: [
+          { path: '/', element: <DashboardPage /> },
+          { path: '/tickets', element: <TicketListPage /> },
+          { path: '/tickets/new', element: <TicketCreatePage /> },
+          { path: '/tickets/:ticketId', element: <TicketDetailPage /> },
+          { path: '/ticket-pool', element: <TicketPoolPage /> },
+        ],
       },
     ],
   },

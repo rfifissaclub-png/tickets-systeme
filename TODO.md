@@ -169,12 +169,32 @@ reviewable increment.
       **Open the app in a real browser and click through login/dark-mode/mobile-nav before trusting
       this beyond "it compiles."**
 
-### Phase 6.2 — Ticket domain UI (next)
+### Phase 6.2 — Ticket domain UI (done, pending live verification)
 
-- [ ] Ticket list (search/filters/sort from Phase 5, skeleton loading, empty states), detail view,
-      create/edit forms, comment thread (internal-note gating), attachment upload/download.
-- [ ] Ticket pool UI + pull-to-assign, optimistic UI where it's safe (not on pull — that one has to
-      wait for the server's atomic-assignment result, see TicketPoolService).
+- [x] TanStack Query hooks for tickets/ticket-types/ticket-pool/comments/attachments (`src/hooks/`),
+      each with query-key-scoped cache invalidation on mutation.
+- [x] Ticket list: debounced search (wired to Phase 5's Postgres full-text search), status/priority
+      filters, pagination, skeleton loading, empty states for both "no results" and "load failed".
+- [x] Ticket detail: read view + inline edit (shares one `TicketForm` component with create), status
+      transitions via `TicketStatusSelect` — its allowed-transitions map is a hand-kept mirror of the
+      backend's `TicketStatusTransitions` (only affects which options are *shown*; the backend is
+      still the real authority and rejects anything outside its own graph regardless), comment
+      thread with internal-note gating (checkbox only shown to staff roles — a UX nicety, the API
+      enforces the real boundary), attachment upload/download/delete.
+- [x] Ticket pool page with pull-to-assign; a 409 (another agent claimed it first) surfaces as a
+      specific "someone else claimed this ticket" toast rather than a generic error, using the
+      `ticket_already_assigned` error code from Phase 3.
+- [x] Explicitly scoped out: a "reassign to a specific agent" picker (`PATCH /tickets/{id}/assign`
+      exists on the backend, but a proper picker needs a users-list endpoint that doesn't exist yet —
+      out of scope for a frontend-only pass) and a Ticket Types management page (the API hooks exist
+      and back the create-ticket type dropdown already; a dedicated CRUD page for Tenant Admins is a
+      small follow-up, not started).
+- [ ] **Not verified** — same gap as Phase 6.1: typecheck/lint/build clean and the dev server serves
+      every new route (confirmed via curl), but nothing has been opened in a real browser, and no
+      live backend means the actual data flows (search results, pulling a ticket, posting a comment)
+      have never executed end-to-end.
+
+### Phase 6.3 — Notifications + reports UI, realtime
 
 ### Phase 6.3 — Notifications + reports UI, realtime
 
