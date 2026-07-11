@@ -133,10 +133,53 @@ This is a multi-phase build. Each phase is scoped to land as a reviewable, teste
 
 ## Phase 6 — Frontend (React 19)
 
-- [ ] Vite + TS + Tailwind + Shadcn UI scaffold.
-- [ ] Router, TanStack Query, Zustand, React Hook Form + Zod, typed API client.
-- [ ] Auth pages, protected routing, dashboard shell, dark mode, accessibility, skeleton/empty
-      states, error boundaries, optimistic UI.
+Split into sub-phases, same reasoning as the backend: the full scope (routing, state, auth UI,
+ticket domain UI, notifications, reports, dark mode, accessibility, realtime) is too large for one
+reviewable increment.
+
+### Phase 6.1 — Foundation (done)
+
+- [x] Vite + React 19 + TypeScript scaffold in `frontend/`, Tailwind v4 (`@tailwindcss/vite`, CSS-first
+      theme via `@theme inline` — no `tailwind.config.ts` needed at this version), path alias `@/*`.
+- [x] shadcn/ui foundation built by hand, not via the CLI: the shadcn CLI's own registry (separate
+      from npm) timed out in this sandbox, so `components/ui/*` (button, input, label, card, avatar,
+      dropdown-menu, separator, dialog, tooltip, skeleton, alert, sonner) were written directly —
+      they're just Radix primitives + `cva` + `cn()`, the CLI only ever copies this same source in.
+      **Environment note**: `registry.npmjs.org` was unreachable from this sandbox (timed out); all
+      `npm install` calls used `registry.npmmirror.com` for this session only (not committed to any
+      `.npmrc` — a real dev machine should have normal registry access and doesn't need this).
+- [x] React Router v8 (`createBrowserRouter`), TanStack Query, Zustand (`auth-store` persisted to
+      localStorage, `theme-store`), React Hook Form + Zod, an axios-based typed API client
+      (`src/lib/api-client.ts`) that unwraps the backend's `ApiResponse` envelope and normalizes
+      errors into `ApiRequestError`.
+- [x] Dark mode (`ThemeProvider`, light/dark/system, persisted), `AppShell` (responsive sidebar —
+      desktop persistent panel, mobile `Dialog`-based drawer — header, user menu, theme toggle),
+      `ErrorBoundary`, `EmptyState`, `Toaster` (sonner) wired at the app root.
+- [x] Auth pages: login (tenant-slug-aware, matching the backend's login contract), forgot-password,
+      reset-password (reads `token`/`email`/`tenant` from the URL the backend's reset email now
+      links to — see the `ResetPassword::createUrlUsing()` fix above). `ProtectedRoute`/`GuestRoute`
+      gate access by auth-store state; nav items are role-filtered client-side as a UX nicety only
+      (the API is the real authorization boundary regardless).
+- [x] Verified: `tsc -b` clean, `oxlint` clean (one benign shadcn Fast-Refresh warning), production
+      `vite build` succeeds, dev server serves the real app (confirmed via curl — see below).
+- [ ] **Not verified**: no browser automation tool is available in this environment, so the login
+      flow, dark mode toggle, and responsive layout were never visually/interactively exercised —
+      only confirmed to typecheck, lint, build, and serve valid HTML/JS. Full E2E verification
+      additionally needs the live backend, which is blocked by the same Docker gap as Phases 1–5.
+      **Open the app in a real browser and click through login/dark-mode/mobile-nav before trusting
+      this beyond "it compiles."**
+
+### Phase 6.2 — Ticket domain UI (next)
+
+- [ ] Ticket list (search/filters/sort from Phase 5, skeleton loading, empty states), detail view,
+      create/edit forms, comment thread (internal-note gating), attachment upload/download.
+- [ ] Ticket pool UI + pull-to-assign, optimistic UI where it's safe (not on pull — that one has to
+      wait for the server's atomic-assignment result, see TicketPoolService).
+
+### Phase 6.3 — Notifications + reports UI, realtime
+
+- [ ] Notification bell/dropdown, mark-as-read, Laravel Echo + Reverb client wiring for live updates.
+- [ ] KPI/report dashboards (Phase 5's endpoints) with charts.
 
 ## Phase 7 — i18n, CI/CD hardening, documentation
 
