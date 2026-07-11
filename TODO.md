@@ -194,12 +194,39 @@ reviewable increment.
       live backend means the actual data flows (search results, pulling a ticket, posting a comment)
       have never executed end-to-end.
 
-### Phase 6.3 — Notifications + reports UI, realtime
+### Phase 6.3 — Notifications + reports UI, realtime (done, pending live verification)
 
-### Phase 6.3 — Notifications + reports UI, realtime
-
-- [ ] Notification bell/dropdown, mark-as-read, Laravel Echo + Reverb client wiring for live updates.
-- [ ] KPI/report dashboards (Phase 5's endpoints) with charts.
+- [x] `laravel-echo` + `pusher-js` wired to Reverb (`src/lib/echo.ts`), lazily connecting with the
+      Sanctum bearer token attached to the `/broadcasting/auth` request. `useRealtimeNotifications`
+      subscribes to this user's private channel once at the `AppShell` level (not per-page, so the
+      subscription survives client-side navigation) and invalidates the notifications query +
+      toasts on every broadcast; disconnected explicitly on logout so a stale connection doesn't
+      keep authenticating as the previous user.
+- [x] `NotificationBell`: unread badge, dropdown list, mark-one/mark-all read, links straight to the
+      relevant ticket. A 60s poll backs up the realtime path for missed/dropped WebSocket events —
+      belt and suspenders, not the primary update mechanism.
+- [x] KPI/report dashboard (`ReportsPage`) consuming all four Phase 5 endpoints: stat tiles (total
+      tickets, avg first response, avg resolution, open count), a status breakdown and a priority
+      breakdown as horizontal bar charts, a 30-day created-vs-resolved trend line chart with a
+      crosshair+tooltip, a tickets-by-agent table, and (Super Admin only) the platform-wide
+      tickets-by-tenant table.
+- [x] Charts were built by hand (SVG/CSS), not a charting library — invoked the **dataviz** skill
+      before writing any chart code per its trigger rule. Categorical hues for status (identity, 5
+      unordered values) and a sequential blue ramp for priority (ordinal: low→urgent) both ran
+      through `scripts/validate_palette.js` for both light and dark surfaces before use; chart
+      chrome (surface/ink/grid) reuses this app's own shadcn tokens rather than the skill's default
+      chrome, so charts match the rest of the UI — only the categorical/sequential hue *values* are
+      the skill's validated ones. Caught and fixed one mistake against the skill's own reference
+      while building this: the dark-mode sequential ramp initially used palette step 650, one step
+      darker than the palette's documented "no darker than step 600" floor for readable ordinal
+      steps on a dark surface.
+- [x] Explicitly scoped out: a Ticket Types management page and a reassign-to-specific-agent picker
+      (same reasons as Phase 6.2 — the latter needs a users-list endpoint that doesn't exist yet).
+- [ ] **Not verified** — the deepest version of the same gap as every other Phase 6 sub-phase: no
+      browser to actually see the charts render, and realtime specifically has *zero* coverage of
+      any kind (not even the static-analysis-adjacent confidence the rest of the frontend has) — a
+      WebSocket handshake, channel auth, and a live broadcast round-trip only exist as reviewed code
+      right now, never executed once, against a backend that itself has never run either.
 
 ## Phase 7 — i18n, CI/CD hardening, documentation
 

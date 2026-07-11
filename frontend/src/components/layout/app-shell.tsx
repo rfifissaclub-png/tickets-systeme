@@ -5,13 +5,19 @@ import { MenuIcon, TicketIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ErrorBoundary } from '@/components/common/error-boundary'
+import { useRealtimeNotifications } from '@/hooks/use-realtime-notifications'
 
+import { NotificationBell } from './notification-bell'
 import { SidebarNav } from './sidebar-nav'
 import { ThemeToggle } from './theme-toggle'
 import { UserMenu } from './user-menu'
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // Mounted once here (not per-page) so the WebSocket subscription persists
+  // across client-side navigation instead of reconnecting on every route.
+  useRealtimeNotifications()
 
   return (
     <div className="bg-background flex min-h-svh">
@@ -48,6 +54,7 @@ export function AppShell() {
             <MenuIcon className="size-5" />
           </Button>
           <div className="flex-1" />
+          <NotificationBell />
           <ThemeToggle />
           <UserMenu />
         </header>

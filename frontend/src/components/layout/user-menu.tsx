@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/use-auth'
+import { disconnectEcho } from '@/lib/echo'
 import { useAuthStore } from '@/stores/auth-store'
 
 function initials(name: string): string {
@@ -35,6 +36,7 @@ export function UserMenu() {
     onSettled: () => {
       // Clear the local session even if the network call failed — a stale
       // token is useless once the user has asked to log out either way.
+      disconnectEcho()
       clearSession()
       navigate('/login', { replace: true })
     },

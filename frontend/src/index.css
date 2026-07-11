@@ -135,3 +135,44 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Chart color roles (see dataviz skill's references/palette.md). Categorical
+ * hues are validated for CVD-safety and contrast via
+ * scripts/validate_palette.js — do not reorder or substitute without
+ * re-running the validator, the slot ORDER is the safety mechanism, not
+ * cosmetic. Chart chrome (surface/ink/grid) intentionally reuses this app's
+ * own shadcn tokens instead of the skill's default chrome, so charts match
+ * the rest of the UI; only the categorical/sequential hues are the skill's
+ * validated values.
+ */
+.viz-root {
+  --viz-series-1: #2a78d6; /* blue */
+  --viz-series-2: #1baf7a; /* aqua */
+  --viz-series-3: #eda100; /* yellow */
+  --viz-series-4: #008300; /* green */
+  --viz-series-5: #4a3aa7; /* violet */
+
+  --viz-sequential-1: #86b6ef; /* step 250 */
+  --viz-sequential-2: #3987e5; /* step 400 */
+  --viz-sequential-3: #256abf; /* step 500 */
+  --viz-sequential-4: #184f95; /* step 600 */
+
+  --viz-grid: var(--border);
+  --viz-axis: var(--muted-foreground);
+  --viz-ink-primary: var(--foreground);
+  --viz-ink-secondary: var(--muted-foreground);
+}
+
+.dark .viz-root {
+  --viz-series-1: #3987e5;
+  --viz-series-2: #199e70;
+  --viz-series-3: #c98500;
+  --viz-series-4: #008300;
+  --viz-series-5: #9085e9;
+
+  --viz-sequential-1: #6da7ec; /* step 300 */
+  --viz-sequential-2: #3987e5; /* step 400 */
+  --viz-sequential-3: #256abf; /* step 500 */
+  --viz-sequential-4: #184f95; /* step 600 — the palette's darkest allowed ordinal step on dark surfaces */
+}

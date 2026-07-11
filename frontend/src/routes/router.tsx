@@ -5,6 +5,7 @@ import { ForgotPasswordPage } from '@/pages/auth/forgot-password-page'
 import { LoginPage } from '@/pages/auth/login-page'
 import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
 import { DashboardPage } from '@/pages/dashboard/dashboard-page'
+import { ReportsPage } from '@/pages/reports/reports-page'
 import { TicketCreatePage } from '@/pages/tickets/ticket-create-page'
 import { TicketDetailPage } from '@/pages/tickets/ticket-detail-page'
 import { TicketListPage } from '@/pages/tickets/ticket-list-page'
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
           { path: '/tickets/new', element: <TicketCreatePage /> },
           { path: '/tickets/:ticketId', element: <TicketDetailPage /> },
           { path: '/ticket-pool', element: <TicketPoolPage /> },
+          { path: '/reports', element: <ReportsPage /> },
         ],
       },
     ],
