@@ -165,6 +165,10 @@ return [
         'agent_id' => 'agent',
         'client_id' => 'client',
         'file' => 'fichier',
+        'slug' => 'identifiant',
+        'roles' => 'rôles',
+        'ticket_type_ids' => 'types de tickets',
+        'tenant_id' => 'entité',
     ],
 
 ];

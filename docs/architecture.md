@@ -78,6 +78,58 @@ tenant-scoped query can run.
   (`app/Policies`) — permissions gate broad capability ("can view any
   ticket"), policies gate the specific instance ("can view *this* ticket").
 
+## Tenant & user management
+
+Entities (tenants) and their users are managed through a dedicated admin
+surface (`TenantController`, `UserController`, `UserRoleController`,
+`AgentSkillController`) rather than only ever existing via database seeding
+— a Tenant Admin can provision agents/clients/other admins and configure
+their roles and skills entirely through the API; a Super Admin can do the
+same across any tenant, plus provision new tenants outright.
+
+- **Platform-wide operations are hardcoded to the Super Admin role, not a
+  grantable permission.** Listing every tenant, creating a new one, and
+  suspending one are checked directly against `RoleName::SuperAdmin` in
+  `TenantPolicy`, the same reasoning as `ReportController::byTenant()`: a
+  `tenants.manage`-shaped permission could in principle be granted to a
+  Tenant Admin role later, which would let a Tenant Admin see or create
+  *other* tenants — a permission grant must never be able to cause that.
+  Viewing/updating a single tenant stays permission-based (`tenants.view` /
+  `tenants.update`) because PostgreSQL RLS already confines a Tenant Admin's
+  own session to their own tenant row regardless of what the permission
+  grants — there's no cross-tenant exposure to guard against there.
+- **`TenantManagementService` / `UserManagementService`** hold this
+  bypass-aware logic so controllers stay thin. A Super Admin's session is
+  never bound to any tenant (see `ResolveTenantContext`), so every one of
+  their cross-tenant reads/writes runs inside an explicit, audited
+  `TenantContext::bypass()` call — but only when the actor actually *is* a
+  Super Admin. Every service method takes the acting `User` and checks this
+  per-call; bypassing unconditionally would silently defeat the RLS
+  confinement a Tenant Admin's permission checks rely on (a real bug caught
+  and fixed during Phase 8 — see `TenantManagementService`'s own docblock).
+- **Role assignment is a separate, narrower permission from general user
+  edits** (`users.manageRoles` vs. `users.update`) — granting someone the
+  ability to fix a colleague's typo'd name shouldn't also grant them the
+  ability to make that colleague a Tenant Admin. Self-role-assignment is
+  blocked outright (`UserPolicy::manageRoles()`). Only a Super Admin may
+  grant the Super Admin role, and only to a user with no tenant — enforced
+  both in the FormRequest (which roles the *actor* may even mention) and in
+  `UserManagementService` (which tenant the *target* ends up in), since the
+  target's tenant isn't always known at validation time.
+- **Spatie's team-scoping is independent of RLS** — the permission pivot
+  tables (`model_has_roles`, etc.) aren't RLS-protected at all, they rely
+  entirely on `PermissionRegistrar::setPermissionsTeamId()`. A Tenant
+  Admin's own bound request already sets this correctly; a Super Admin's
+  never is (no tenant of their own), so `UserManagementService` explicitly
+  sets and restores it around any role/skill write made on a Super Admin's
+  behalf — otherwise the pivot row would be written scoped to no tenant at
+  all instead of the target user's actual tenant.
+- **Email uniqueness is enforced per-tenant, not globally** (matching the
+  `users` table's own `(tenant_id, email)` unique index plus a partial
+  index for `tenant_id IS NULL`): two different tenants may each
+  independently have a user with the same email address; two users in the
+  *same* tenant may not.
+
 ## Ticket domain
 
 ### Status workflow
@@ -119,6 +171,19 @@ claim inside a transaction using `SELECT ... FOR UPDATE` on the ticket row,
 so under concurrent pulls exactly one caller succeeds and the rest receive
 `409 ticket_already_assigned` — there is no larger window where two agents
 could both believe they'd claimed the same ticket.
+
+**Skill-based routing**: a front-line agent (someone who can't also assign
+tickets to *other* people — i.e. lacks `tickets.assign`) only ever sees pool
+tickets whose type they've been declared qualified for, via the
+`agent_skills` pivot table (`User::qualifiedTicketTypes()`,
+`PATCH /users/{user}/skills`). A Manager/Tenant Admin/Super Admin sees the
+full, unfiltered pool for oversight instead. No skills configured means an
+empty pool for that agent, not "everything" — the same fail-closed default
+every other RLS/permission boundary in this app uses. Enforced twice:
+`TicketPolicy::pull()` blocks an unqualified claim before a transaction even
+opens, and `TicketPoolService::pull()` re-checks it again against the
+row-locked ticket — the same belt-and-suspenders pattern as the read-only
+status checks elsewhere in this file.
 
 ### Full-text search
 

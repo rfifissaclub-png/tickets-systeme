@@ -1,9 +1,11 @@
 import {
   BarChart3Icon,
+  BuildingIcon,
   InboxIcon,
   LayoutDashboardIcon,
   TagsIcon,
   TicketIcon,
+  UsersIcon,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -37,5 +39,17 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/ticket-types',
     icon: TagsIcon,
     roles: ['Tenant Admin', 'Super Admin'],
+  },
+  {
+    labelKey: 'nav.users',
+    to: '/users',
+    icon: UsersIcon,
+    roles: ['Manager', 'Tenant Admin', 'Super Admin'],
+  },
+  {
+    labelKey: 'nav.tenants',
+    to: '/tenants',
+    icon: BuildingIcon,
+    roles: ['Super Admin'],
   },
 ]

@@ -28,12 +28,30 @@ return [
         'read_only_closed' => 'Les tickets fermés ne peuvent plus être modifiés.',
         'already_assigned' => 'Ce ticket a déjà été pris en charge par un autre agent.',
         'invalid_transition' => 'Impossible de faire passer un ticket de « :from » à « :to ».',
+        'not_qualified' => "Vous n'êtes pas qualifié pour prendre ce type de ticket. Demandez à un administrateur de vous attribuer cette compétence.",
     ],
 
     'ticket_types' => [
         'created' => 'Type de ticket créé.',
         'updated' => 'Type de ticket mis à jour.',
         'deleted' => 'Type de ticket supprimé.',
+    ],
+
+    'tenants' => [
+        'created' => 'Entité créée.',
+        'updated' => 'Entité mise à jour.',
+        'deleted' => 'Entité suspendue.',
+    ],
+
+    'users' => [
+        'created' => 'Utilisateur créé.',
+        'updated' => 'Utilisateur mis à jour.',
+        'deleted' => 'Utilisateur désactivé.',
+        'roles_updated' => 'Rôles mis à jour.',
+        'skills_updated' => 'Compétences mises à jour.',
+        'only_super_admin_grants_super_admin' => 'Seul un Super Admin peut accorder le rôle Super Admin.',
+        'super_admin_role_requires_no_tenant' => "Le rôle Super Admin ne peut être accordé qu'à un compte de niveau plateforme, sans espace de travail.",
+        'skills_must_match_tenant' => "Un ou plusieurs types de tickets n'appartiennent pas à l'espace de travail de cet utilisateur.",
     ],
 
     'attachments' => [

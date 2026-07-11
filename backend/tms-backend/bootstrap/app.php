@@ -3,6 +3,7 @@
 use App\Exceptions\InvalidTicketTransitionException;
 use App\Exceptions\TicketAlreadyAssignedException;
 use App\Exceptions\TicketIsReadOnlyException;
+use App\Exceptions\TicketNotQualifiedException;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SetLocale;
 use App\Support\ApiResponse;
@@ -88,6 +89,14 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return ApiResponse::error(message: $e->getMessage(), status: 409, code: 'ticket_read_only');
+        });
+
+        $exceptions->render(function (TicketNotQualifiedException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return ApiResponse::error(message: $e->getMessage(), status: 403, code: 'ticket_not_qualified');
         });
 
         $exceptions->render(function (InvalidTicketTransitionException $e, Request $request) {

@@ -287,6 +287,66 @@ reviewable increment.
       Docker images have never actually been built (no Docker daemon access here, only Dockerfile/
       compose-YAML static review), and the GHCR publish step has never executed.
 
+## Phase 8 — Entity/user management, skill-based pool routing (done, pending live verification)
+
+Closes three gaps found on re-reading the original cahier des charges functional spec against the
+actual implementation: (1) no API/UI existed at all for admins to create tenants, create/manage
+users, or assign roles — the app only ever worked with seeded demo data; (2) the ticket pool showed
+every unassigned ticket to every eligible agent, not filtered by the "compétences" (qualified ticket
+types) the spec's "Cas d'Usage Principal" describes as the actual point of the pool; (3) the Ticket
+Types page had a nav entry and a fully-built backend CRUD API since Phase 6.2 but no frontend route.
+
+- [x] `agent_skills` pivot table (new migration, RLS-protected like every other tenant-owned table) —
+      `User::qualifiedTicketTypes()` / `TicketType::qualifiedAgents()`. A missing row means "not
+      qualified", not "qualified for everything" — fails closed, same as the rest of this app.
+- [x] Tenant management: `TenantController` (index/store/show/update/destroy), `TenantPolicy`,
+      `TenantManagementService`. Platform-wide operations (list all, create, suspend) are hardcoded to
+      the Super Admin role rather than a grantable permission — same reasoning as the existing
+      tickets-by-tenant report, to close off a permission-grant privilege-escalation path. Caught and
+      fixed a real bug while building this: an early draft of `TenantManagementService::find()`
+      unconditionally bypassed RLS for every caller, which would have let a Tenant Admin's
+      permission-only `tenants.view` check reach *any* tenant, not just their own — fixed to bypass
+      only when the actor is actually a Super Admin.
+- [x] User management: `UserController`, `UserRoleController`, `AgentSkillController`, `UserPolicy`
+      extended with `manageRoles`/`manageSkills`, `UserManagementService`. Tenant-scoped email
+      uniqueness (matches the DB's own `(tenant_id, email)` constraint), role assignment kept as a
+      separate narrower permission from general user edits, Super-Admin-role grants restricted to
+      users with no tenant, self-role-assignment blocked. Spatie's team-scoping is independent of
+      RLS (permission pivot tables aren't RLS-protected) — `UserManagementService` explicitly sets and
+      restores `PermissionsTeamId` around any cross-tenant role/skill write a Super Admin makes, or
+      those writes would land scoped to no tenant at all.
+- [x] Skill-based pool routing: `TicketPoolService::poolQuery()`/`pull()` now filter/reject by the
+      calling agent's `agent_skills`, unless the agent can also assign tickets to others
+      (Manager/Tenant Admin/Super Admin, who need full-pool oversight instead). Enforced twice —
+      `TicketPolicy::pull()` blocks it before a transaction opens, `TicketPoolService::pull()`
+      re-checks the row-locked ticket — the same belt-and-suspenders pattern as the read-only ticket
+      checks. New `TicketNotQualifiedException` (403, `ticket_not_qualified`).
+- [x] Frontend: `TicketTypesPage` (the missing route from Phase 6.2 — backend CRUD already existed),
+      `UsersPage` (create users, assign roles via checkboxes, assign skills via checkboxes, deactivate),
+      `TenantsPage` (Super Admin — create/list/suspend entities), new nav entries gated by role
+      (`Manager`+ for Users, `Super Admin` only for Entities). All new UI text translated EN/FR, key
+      parity verified (246/246 keys in both locale files).
+- [x] Demo seed data extended: three ticket types matching the cahier des charges' own worked example
+      (IT Support, Billing, Human Resources) and a demo Support Agent (`agent@acme.tms.local`)
+      qualified only for IT Support, so the skill-filtering behavior is visible out of the box instead
+      of only after an admin configures it by hand.
+- [x] Backend tests: `TenantManagementTest`, `UserManagementTest`, `AgentSkillTest`, plus the existing
+      `TicketPoolTest` updated for the new `poolQuery(User $agent)` signature and skill-gating (all
+      previously-passing assertions preserved, three new cases added for skill filtering).
+- [x] Docs: `docs/openapi.yaml` gained 6 new paths (tenants CRUD, users CRUD, role sync, skill sync;
+      32 operations total now) plus `Tenant`/`TenantStatus` schemas and a `skills` field on `User` —
+      re-validated with `@redocly/cli lint`, 0 errors. `docs/er-diagram.md` gained the `agent_skills`
+      table and relationships, re-rendered with a real `mmdc` run. `docs/architecture.md` gained a
+      "Tenant & user management" section and an expanded pool/pull section covering skill routing.
+- [ ] **Live verification blocked** — same Docker/browser gap as every prior phase. Static verification
+      only: `php -l` on every touched file, Pint, `composer validate`, a full `artisan list` boot
+      check, `artisan route:list` confirming all 12 new routes registered, every new/updated Pest test
+      correctly collected (fails only on "could not find driver" — no live Postgres here, not a code
+      problem) — full list in the Phase 8 commit message. `tsc -b`, `oxlint`, and a production
+      `vite build` all pass on the frontend. None of this has been exercised against a live stack or a
+      real browser: the create-user/assign-roles/assign-skills flows and the pool's actual filtered
+      contents have never been seen rendered, only reviewed as code.
+
 ## Future roadmap (post-MVP, architecture should not block these)
 
 - [ ] AI ticket classification, SLA engine, Knowledge Base, CSAT, Live Chat, WhatsApp/Slack/Teams

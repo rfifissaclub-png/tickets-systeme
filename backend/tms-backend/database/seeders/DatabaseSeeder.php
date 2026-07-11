@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\RoleName;
 use App\Models\Tenant;
+use App\Models\TicketType;
 use App\Models\User;
 use App\Services\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
@@ -60,5 +61,24 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@acme.tms.local',
         ]);
         $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+
+        // Matches the cahier des charges' own worked example (Support
+        // Informatique, Facturation, Ressources Humaines) so a fresh demo
+        // tenant is immediately usable end-to-end, not an empty shell an
+        // admin has to configure from scratch before filing a first ticket.
+        $itSupport = TicketType::factory()->for($tenant)->create(['name' => 'IT Support']);
+        TicketType::factory()->for($tenant)->create(['name' => 'Billing']);
+        TicketType::factory()->for($tenant)->create(['name' => 'Human Resources']);
+
+        // A Support Agent qualified only for IT Support — demonstrates the
+        // pool's skill-based filtering (see TicketPoolService::poolQuery())
+        // out of the box instead of it only being visible once someone
+        // configures skills by hand.
+        $agent = User::factory()->for($tenant)->create([
+            'name' => 'Acme Support Agent',
+            'email' => 'agent@acme.tms.local',
+        ]);
+        $agent->assignRole(RoleName::SupportAgent->value);
+        $agent->qualifiedTicketTypes()->attach($itSupport->id, ['tenant_id' => $tenant->id]);
     }
 }

@@ -6,10 +6,13 @@ import { LoginPage } from '@/pages/auth/login-page'
 import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
 import { DashboardPage } from '@/pages/dashboard/dashboard-page'
 import { ReportsPage } from '@/pages/reports/reports-page'
+import { TenantsPage } from '@/pages/tenants/tenants-page'
+import { TicketTypesPage } from '@/pages/ticket-types/ticket-types-page'
 import { TicketCreatePage } from '@/pages/tickets/ticket-create-page'
 import { TicketDetailPage } from '@/pages/tickets/ticket-detail-page'
 import { TicketListPage } from '@/pages/tickets/ticket-list-page'
 import { TicketPoolPage } from '@/pages/tickets/ticket-pool-page'
+import { UsersPage } from '@/pages/users/users-page'
 
 import { GuestRoute } from './guest-route'
 import { ProtectedRoute } from './protected-route'
@@ -35,6 +38,9 @@ export const router = createBrowserRouter([
           { path: '/tickets/:ticketId', element: <TicketDetailPage /> },
           { path: '/ticket-pool', element: <TicketPoolPage /> },
           { path: '/reports', element: <ReportsPage /> },
+          { path: '/ticket-types', element: <TicketTypesPage /> },
+          { path: '/users', element: <UsersPage /> },
+          { path: '/tenants', element: <TenantsPage /> },
         ],
       },
     ],

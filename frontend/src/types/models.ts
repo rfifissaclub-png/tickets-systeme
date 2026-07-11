@@ -17,6 +17,9 @@ export interface Tenant {
   name: string
   slug: string
   status: TenantStatus
+  settings?: Record<string, unknown>
+  created_at?: string
+  updated_at?: string
 }
 
 export interface User {
@@ -26,6 +29,7 @@ export interface User {
   email: string
   email_verified_at: string | null
   roles?: RoleName[]
+  skills?: TicketType[]
 }
 
 export interface TicketType {

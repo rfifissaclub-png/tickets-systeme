@@ -11,7 +11,9 @@
     "unknown": "Unknown",
     "someone": "someone",
     "dash": "—",
-    "unexpectedError": "An unexpected error occurred."
+    "unexpectedError": "An unexpected error occurred.",
+    "edit": "Edit",
+    "delete": "Delete"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -19,6 +21,8 @@
     "ticketPool": "Ticket Pool",
     "reports": "Reports",
     "ticketTypes": "Ticket Types",
+    "users": "Users",
+    "tenants": "Entities",
     "openNavigation": "Open navigation",
     "navigation": "Navigation",
     "primary": "Primary"
@@ -220,5 +224,77 @@
     "title": "Something went wrong",
     "description": "An unexpected error occurred while rendering this page.",
     "tryAgain": "Try again"
+  },
+  "ticketTypes": {
+    "title": "Ticket Types",
+    "subtitle": "Categories tickets are filed under, and what agents can be qualified for.",
+    "newType": "New type",
+    "editType": "Edit ticket type",
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "isActive": "Active",
+      "createDescription": "Active types appear in the ticket creation form.",
+      "nameRequiredError": "Name is required."
+    },
+    "columnName": "Name",
+    "columnDescription": "Description",
+    "columnStatus": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "emptyTitle": "No ticket types yet",
+    "emptyDescription": "Create one to start filing tickets.",
+    "createdToast": "Ticket type created.",
+    "updatedToast": "Ticket type updated.",
+    "deletedToast": "Ticket type deleted.",
+    "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone."
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "Manage accounts, roles, and agent skills for your team.",
+    "newUser": "New user",
+    "form": {
+      "name": "Name",
+      "nameRequiredError": "Name is required.",
+      "initialPassword": "Initial password",
+      "roles": "Roles"
+    },
+    "columnName": "Name",
+    "columnEmail": "Email",
+    "columnRoles": "Roles",
+    "editRoles": "Edit roles",
+    "editSkills": "Edit skills",
+    "editRolesFor": "Edit roles for {{name}}",
+    "editSkillsFor": "Edit skills for {{name}}",
+    "noTicketTypesYet": "No ticket types exist yet — create one first.",
+    "emptyTitle": "No users yet",
+    "createdToast": "User created.",
+    "rolesUpdatedToast": "Roles updated.",
+    "skillsUpdatedToast": "Skills updated.",
+    "deletedToast": "User deactivated.",
+    "deleteConfirm": "Deactivate {{name}}? They will no longer be able to sign in."
+  },
+  "tenants": {
+    "title": "Entities",
+    "subtitle": "Organizations using this platform.",
+    "newTenant": "New entity",
+    "form": {
+      "name": "Name",
+      "nameRequiredError": "Name is required.",
+      "slug": "Slug",
+      "slugRequiredError": "Slug is required.",
+      "slugFormatError": "Slug may only contain lowercase letters, numbers, and hyphens.",
+      "slugPlaceholder": "acme"
+    },
+    "columnName": "Name",
+    "columnSlug": "Slug",
+    "columnStatus": "Status",
+    "active": "Active",
+    "suspended": "Suspended",
+    "suspend": "Suspend",
+    "emptyTitle": "No entities yet",
+    "createdToast": "Entity created.",
+    "suspendedToast": "Entity suspended.",
+    "suspendConfirm": "Suspend \"{{name}}\"? Its users will no longer be able to sign in."
   }
 }

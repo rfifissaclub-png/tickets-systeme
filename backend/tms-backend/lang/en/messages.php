@@ -28,12 +28,30 @@ return [
         'read_only_closed' => 'Closed tickets cannot be modified.',
         'already_assigned' => 'This ticket has already been claimed by another agent.',
         'invalid_transition' => 'Cannot transition a ticket from ":from" to ":to".',
+        'not_qualified' => 'You are not qualified to pull this ticket type. Ask an administrator to grant you this skill.',
     ],
 
     'ticket_types' => [
         'created' => 'Ticket type created.',
         'updated' => 'Ticket type updated.',
         'deleted' => 'Ticket type deleted.',
+    ],
+
+    'tenants' => [
+        'created' => 'Entity created.',
+        'updated' => 'Entity updated.',
+        'deleted' => 'Entity suspended.',
+    ],
+
+    'users' => [
+        'created' => 'User created.',
+        'updated' => 'User updated.',
+        'deleted' => 'User deactivated.',
+        'roles_updated' => 'Roles updated.',
+        'skills_updated' => 'Skills updated.',
+        'only_super_admin_grants_super_admin' => 'Only a Super Admin may grant the Super Admin role.',
+        'super_admin_role_requires_no_tenant' => 'The Super Admin role can only be granted to a platform-level account with no tenant.',
+        'skills_must_match_tenant' => 'One or more ticket types do not belong to this user\'s tenant.',
     ],
 
     'attachments' => [

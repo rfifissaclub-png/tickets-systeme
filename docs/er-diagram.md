@@ -22,8 +22,11 @@ erDiagram
     USERS ||--o{ TICKET_COMMENTS : "author_id"
     USERS ||--o{ TICKET_ATTACHMENTS : "uploader_id"
     USERS ||--o{ AUDIT_LOGS : "actor_id (nullable)"
+    USERS ||--o{ AGENT_SKILLS : "user_id"
 
     TICKET_TYPES ||--o{ TICKETS : "ticket_type_id"
+    TICKET_TYPES ||--o{ AGENT_SKILLS : "ticket_type_id"
+    TENANTS ||--o{ AGENT_SKILLS : "owns"
 
     TICKETS ||--o{ TICKET_COMMENTS : "ticket_id"
     TICKETS ||--o{ TICKET_ATTACHMENTS : "ticket_id"
@@ -127,6 +130,14 @@ erDiagram
         text user_agent
         timestamp created_at "append-only, no updated_at"
     }
+
+    AGENT_SKILLS {
+        uuid id PK
+        uuid tenant_id FK
+        uuid user_id FK "cascade delete"
+        uuid ticket_type_id FK "cascade delete"
+        timestamps ts
+    }
 ```
 
 ## Notes on deliberate design choices
@@ -147,3 +158,9 @@ erDiagram
 - **`notifications.tenant_id` is `NOT NULL`** (unlike `audit_logs`) —
   notifications are always about something tenant-scoped (a ticket event);
   there is no platform-level notification concept yet.
+- **`agent_skills` is a plain many-to-many pivot with its own `tenant_id`**
+  (not derivable from either side alone in a way RLS could use directly) —
+  it exists solely to drive the ticket pool's skill-based filtering (see
+  `architecture.md`); a missing row means "not qualified", not "qualified
+  for everything" — the pool fails closed for a fresh agent with no rows
+  here yet, same as every other RLS/permission boundary in this app.

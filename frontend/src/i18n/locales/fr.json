@@ -11,7 +11,9 @@
     "unknown": "Inconnu",
     "someone": "quelqu'un",
     "dash": "—",
-    "unexpectedError": "Une erreur inattendue s'est produite."
+    "unexpectedError": "Une erreur inattendue s'est produite.",
+    "edit": "Modifier",
+    "delete": "Supprimer"
   },
   "nav": {
     "dashboard": "Tableau de bord",
@@ -19,6 +21,8 @@
     "ticketPool": "Réserve de tickets",
     "reports": "Rapports",
     "ticketTypes": "Types de tickets",
+    "users": "Utilisateurs",
+    "tenants": "Entités",
     "openNavigation": "Ouvrir la navigation",
     "navigation": "Navigation",
     "primary": "Principale"
@@ -220,5 +224,77 @@
     "title": "Une erreur s'est produite",
     "description": "Une erreur inattendue s'est produite lors de l'affichage de cette page.",
     "tryAgain": "Réessayer"
+  },
+  "ticketTypes": {
+    "title": "Types de tickets",
+    "subtitle": "Catégories sous lesquelles les tickets sont classés, et pour lesquelles les agents peuvent être qualifiés.",
+    "newType": "Nouveau type",
+    "editType": "Modifier le type de ticket",
+    "form": {
+      "name": "Nom",
+      "description": "Description",
+      "isActive": "Actif",
+      "createDescription": "Les types actifs apparaissent dans le formulaire de création de ticket.",
+      "nameRequiredError": "Le nom est requis."
+    },
+    "columnName": "Nom",
+    "columnDescription": "Description",
+    "columnStatus": "Statut",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "emptyTitle": "Aucun type de ticket pour le moment",
+    "emptyDescription": "Créez-en un pour commencer à créer des tickets.",
+    "createdToast": "Type de ticket créé.",
+    "updatedToast": "Type de ticket mis à jour.",
+    "deletedToast": "Type de ticket supprimé.",
+    "deleteConfirm": "Supprimer « {{name}} » ? Cette action est irréversible."
+  },
+  "users": {
+    "title": "Utilisateurs",
+    "subtitle": "Gérez les comptes, les rôles et les compétences des agents de votre équipe.",
+    "newUser": "Nouvel utilisateur",
+    "form": {
+      "name": "Nom",
+      "nameRequiredError": "Le nom est requis.",
+      "initialPassword": "Mot de passe initial",
+      "roles": "Rôles"
+    },
+    "columnName": "Nom",
+    "columnEmail": "E-mail",
+    "columnRoles": "Rôles",
+    "editRoles": "Modifier les rôles",
+    "editSkills": "Modifier les compétences",
+    "editRolesFor": "Modifier les rôles de {{name}}",
+    "editSkillsFor": "Modifier les compétences de {{name}}",
+    "noTicketTypesYet": "Aucun type de ticket n'existe encore — créez-en un d'abord.",
+    "emptyTitle": "Aucun utilisateur pour le moment",
+    "createdToast": "Utilisateur créé.",
+    "rolesUpdatedToast": "Rôles mis à jour.",
+    "skillsUpdatedToast": "Compétences mises à jour.",
+    "deletedToast": "Utilisateur désactivé.",
+    "deleteConfirm": "Désactiver {{name}} ? Cette personne ne pourra plus se connecter."
+  },
+  "tenants": {
+    "title": "Entités",
+    "subtitle": "Organisations utilisant cette plateforme.",
+    "newTenant": "Nouvelle entité",
+    "form": {
+      "name": "Nom",
+      "nameRequiredError": "Le nom est requis.",
+      "slug": "Identifiant",
+      "slugRequiredError": "L'identifiant est requis.",
+      "slugFormatError": "L'identifiant ne peut contenir que des lettres minuscules, des chiffres et des tirets.",
+      "slugPlaceholder": "acme"
+    },
+    "columnName": "Nom",
+    "columnSlug": "Identifiant",
+    "columnStatus": "Statut",
+    "active": "Active",
+    "suspended": "Suspendue",
+    "suspend": "Suspendre",
+    "emptyTitle": "Aucune entité pour le moment",
+    "createdToast": "Entité créée.",
+    "suspendedToast": "Entité suspendue.",
+    "suspendConfirm": "Suspendre « {{name}} » ? Ses utilisateurs ne pourront plus se connecter."
   }
 }

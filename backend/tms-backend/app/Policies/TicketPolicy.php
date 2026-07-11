@@ -82,9 +82,26 @@ class TicketPolicy
         return ! $ticket->isReadOnly() && $actor->can('tickets.assign');
     }
 
+    /**
+     * Beyond the blanket tickets.pull permission, someone who can't also
+     * assign tickets to *other* people (Manager/Tenant Admin) is a
+     * front-line agent restricted to the ticket types they're declared
+     * qualified for (agent_skills) — the cahier des charges' "Réservoir
+     * filtré par compétences". Re-checked again in TicketPoolService::pull()
+     * against the row-locked ticket, the same belt-and-suspenders pattern
+     * as the read-only checks elsewhere in this policy.
+     */
     public function pull(User $actor, Ticket $ticket): bool
     {
-        return $ticket->isInPool() && $actor->can('tickets.pull');
+        if (! $ticket->isInPool() || ! $actor->can('tickets.pull')) {
+            return false;
+        }
+
+        if ($actor->can('tickets.assign')) {
+            return true;
+        }
+
+        return $actor->qualifiedTicketTypes()->where('ticket_types.id', $ticket->ticket_type_id)->exists();
     }
 
     public function viewInternalComments(User $actor): bool

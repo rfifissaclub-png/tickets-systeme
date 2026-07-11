@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\RoleName;
 use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketType;
@@ -35,6 +36,21 @@ function createTenantWithUser(array $userAttributes = []): array
         $user = User::factory()->for($tenant)->create($userAttributes);
 
         return [$tenant, $user];
+    });
+}
+
+/**
+ * A platform-level Super Admin (tenant_id IS NULL), role-assigned and ready
+ * to log in. Requires RoleAndPermissionSeeder to have run first (the Super
+ * Admin role must exist) — same precondition as assignRole() anywhere else.
+ */
+function createSuperAdmin(): User
+{
+    return app(TenantContext::class)->bypass('test fixture setup', function () {
+        $superAdmin = User::factory()->superAdmin()->create();
+        $superAdmin->assignRole(RoleName::SuperAdmin->value);
+
+        return $superAdmin;
     });
 }
 

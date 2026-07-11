@@ -18,7 +18,7 @@ class TicketPoolController extends Controller
     {
         $this->authorize('viewAny', Ticket::class);
 
-        $tickets = $this->poolService->poolQuery()
+        $tickets = $this->poolService->poolQuery($request->user())
             ->with(['ticketType', 'client'])
             ->orderBy('created_at')
             ->paginate(min((int) $request->query('per_page', 25), 100));

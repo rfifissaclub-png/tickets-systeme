@@ -25,6 +25,7 @@ class RoleAndPermissionSeeder extends Seeder
         'users.create',
         'users.update',
         'users.delete',
+        'users.manageRoles',
         'tenants.view',
         'tenants.update',
         'tenants.manage',
@@ -37,22 +38,23 @@ class RoleAndPermissionSeeder extends Seeder
         'tickets.pull',
         'tickets.viewInternal',
         'ticket_types.manage',
+        'agent_skills.manage',
         'reports.view',
     ];
 
     /** @var array<string, list<string>> */
     private const ROLE_PERMISSIONS = [
         RoleName::TenantAdmin->value => [
-            'users.viewAny', 'users.view', 'users.create', 'users.update', 'users.delete',
+            'users.viewAny', 'users.view', 'users.create', 'users.update', 'users.delete', 'users.manageRoles',
             'tenants.view', 'tenants.update',
             'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.update', 'tickets.delete',
-            'tickets.assign', 'tickets.viewInternal', 'ticket_types.manage',
+            'tickets.assign', 'tickets.viewInternal', 'ticket_types.manage', 'agent_skills.manage',
             'reports.view',
         ],
         RoleName::Manager->value => [
             'users.viewAny', 'users.view', 'users.update',
             'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.update',
-            'tickets.assign', 'tickets.viewInternal',
+            'tickets.assign', 'tickets.viewInternal', 'agent_skills.manage',
             'reports.view',
         ],
         // Deliberately no tickets.update: an agent's ability to edit a

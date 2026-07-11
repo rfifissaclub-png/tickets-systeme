@@ -3,7 +3,9 @@
 use App\Enums\RoleName;
 use App\Enums\TicketStatus;
 use App\Exceptions\TicketAlreadyAssignedException;
+use App\Exceptions\TicketNotQualifiedException;
 use App\Models\Ticket;
+use App\Models\TicketType;
 use App\Models\User;
 use App\Services\Tenancy\TenantContext;
 use App\Services\Tickets\TicketPoolService;
@@ -12,25 +14,70 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Str;
 
 it('lists only unassigned, Pending tickets in the pool', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
     [$tenant, $ticketType, $client, $agent, $pendingTicket] = createTicketFixture();
 
     app(TenantContext::class)->set($tenant->id);
+    $agent->assignRole(RoleName::Manager->value); // tickets.assign — unfiltered pool visibility
+    $agent->refresh();
 
     $assignedTicket = Ticket::factory()->for($tenant)->assignedTo($agent)->create([
         'ticket_type_id' => $ticketType->id,
         'client_id' => $client->id,
     ]);
 
-    $poolIds = app(TicketPoolService::class)->poolQuery()->pluck('id')->all();
+    $poolIds = app(TicketPoolService::class)->poolQuery($agent)->pluck('id')->all();
 
     expect($poolIds)->toContain($pendingTicket->id)
         ->and($poolIds)->not->toContain($assignedTicket->id);
 });
 
-it('atomically assigns a pooled ticket to the pulling agent', function () {
+it('only shows a skill-gated agent pool tickets matching their qualified ticket types', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    [$tenant, $ticketType, $client, $agent, $qualifiedTicket] = createTicketFixture();
+
+    app(TenantContext::class)->set($tenant->id);
+    $agent->assignRole(RoleName::SupportAgent->value);
+    $agent->refresh();
+
+    $otherType = TicketType::factory()->for($tenant)->create();
+    $unqualifiedTicket = Ticket::factory()->for($tenant)->create([
+        'ticket_type_id' => $otherType->id,
+        'client_id' => $client->id,
+    ]);
+
+    // No skills assigned yet: fails closed, empty pool.
+    expect(app(TicketPoolService::class)->poolQuery($agent)->pluck('id')->all())->toBe([]);
+
+    $agent->qualifiedTicketTypes()->attach($ticketType->id, ['tenant_id' => $tenant->id]);
+    $agent->refresh();
+
+    $poolIds = app(TicketPoolService::class)->poolQuery($agent)->pluck('id')->all();
+
+    expect($poolIds)->toContain($qualifiedTicket->id)
+        ->and($poolIds)->not->toContain($unqualifiedTicket->id);
+});
+
+it('rejects pulling a ticket type the agent is not qualified for, even by direct id', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
     [$tenant, , , $agent, $ticket] = createTicketFixture();
 
     app(TenantContext::class)->set($tenant->id);
+    $agent->assignRole(RoleName::SupportAgent->value);
+    $agent->refresh();
+
+    expect(fn () => app(TicketPoolService::class)->pull($ticket->id, $agent))
+        ->toThrow(TicketNotQualifiedException::class);
+});
+
+it('atomically assigns a pooled ticket to the pulling agent', function () {
+    [$tenant, $ticketType, , $agent, $ticket] = createTicketFixture();
+
+    app(TenantContext::class)->set($tenant->id);
+    $agent->qualifiedTicketTypes()->attach($ticketType->id, ['tenant_id' => $tenant->id]);
 
     $assigned = app(TicketPoolService::class)->pull($ticket->id, $agent);
 
@@ -39,7 +86,7 @@ it('atomically assigns a pooled ticket to the pulling agent', function () {
 });
 
 it('rejects a second pull attempt on an already-claimed ticket', function () {
-    [$tenant, , , $agentA, $ticket] = createTicketFixture();
+    [$tenant, $ticketType, , $agentA, $ticket] = createTicketFixture();
 
     $agentB = app(TenantContext::class)->bypass(
         'test fixture setup',
@@ -47,6 +94,7 @@ it('rejects a second pull attempt on an already-claimed ticket', function () {
     );
 
     app(TenantContext::class)->set($tenant->id);
+    $agentA->qualifiedTicketTypes()->attach($ticketType->id, ['tenant_id' => $tenant->id]);
 
     app(TicketPoolService::class)->pull($ticket->id, $agentA);
 
@@ -72,10 +120,11 @@ it('throws when pulling a ticket id that does not exist', function () {
 it('lets an authorized agent pull a ticket from the pool via the API', function () {
     $this->seed(RoleAndPermissionSeeder::class);
 
-    [$tenant, , , $agent, $ticket] = createTicketFixture();
+    [$tenant, $ticketType, , $agent, $ticket] = createTicketFixture();
 
     app(TenantContext::class)->set($tenant->id);
     $agent->assignRole(RoleName::SupportAgent->value);
+    $agent->qualifiedTicketTypes()->attach($ticketType->id, ['tenant_id' => $tenant->id]);
 
     $login = $this->postJson('/api/v1/auth/login', [
         'tenant' => $tenant->slug,
@@ -93,10 +142,11 @@ it('lets an authorized agent pull a ticket from the pool via the API', function 
 it('returns 409 for a second API pull attempt on the same ticket', function () {
     $this->seed(RoleAndPermissionSeeder::class);
 
-    [$tenant, , , $agent, $ticket] = createTicketFixture();
+    [$tenant, $ticketType, , $agent, $ticket] = createTicketFixture();
 
     app(TenantContext::class)->set($tenant->id);
     $agent->assignRole(RoleName::SupportAgent->value);
+    $agent->qualifiedTicketTypes()->attach($ticketType->id, ['tenant_id' => $tenant->id]);
 
     $token = $this->postJson('/api/v1/auth/login', [
         'tenant' => $tenant->slug,

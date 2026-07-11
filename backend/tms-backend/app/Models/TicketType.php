@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -44,5 +45,15 @@ class TicketType extends Model
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class);
+    }
+
+    /**
+     * Agents qualified to pull tickets of this type from the pool.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function qualifiedAgents(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'agent_skills')->withTimestamps();
     }
 }

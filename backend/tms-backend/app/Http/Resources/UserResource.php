@@ -23,6 +23,7 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'email_verified_at' => $this->email_verified_at,
             'roles' => $this->whenLoaded('roles', fn () => $this->roles->pluck('name')),
+            'skills' => $this->whenLoaded('qualifiedTicketTypes', fn () => TicketTypeResource::collection($this->qualifiedTicketTypes)),
         ];
     }
 }

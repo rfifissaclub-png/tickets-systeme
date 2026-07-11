@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -73,6 +74,19 @@ class User extends Authenticatable implements MustVerifyEmail
     public function notifications(): MorphMany
     {
         return $this->morphMany(Notification::class, 'notifiable')->latest();
+    }
+
+    /**
+     * The ticket types this agent is qualified to pull from the pool (see
+     * TicketPoolService) — an empty relation means "not qualified for
+     * anything yet", not "qualified for everything": the pool fails closed,
+     * same as every RLS-protected table in this app.
+     *
+     * @return BelongsToMany<TicketType, $this>
+     */
+    public function qualifiedTicketTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(TicketType::class, 'agent_skills')->withTimestamps();
     }
 
     /**

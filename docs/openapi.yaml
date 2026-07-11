@@ -21,6 +21,10 @@ tags:
     description: Login, logout, password reset, and email verification.
   - name: Me
     description: The authenticated caller's own profile.
+  - name: Tenants
+    description: Organizations (entities) using the platform — Super Admin platform-wide management, Tenant Admin self-service.
+  - name: Users
+    description: Accounts, role assignment, and agent skill (qualified ticket type) assignment.
   - name: Tickets
     description: Ticket CRUD, status transitions, and assignment.
   - name: Ticket Pool
@@ -236,6 +240,409 @@ paths:
                       data: { $ref: "#/components/schemas/User" }
         "401":
           $ref: "#/components/responses/Unauthenticated"
+
+  /tenants:
+    get:
+      tags: [Tenants]
+      operationId: getTenants
+      summary: List every tenant across the platform
+      description: Super Admin only, hardcoded (not a grantable permission) — same reasoning as the tickets-by-tenant report.
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 25, maximum: 100 }
+      responses:
+        "200":
+          description: Paginated tenant list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Tenant" }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Tenants]
+      operationId: postTenants
+      summary: Provision a new tenant (entity)
+      description: Super Admin only, hardcoded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name: { type: string, maxLength: 255 }
+                slug:
+                  type: string
+                  maxLength: 255
+                  description: Lowercase, letters/numbers/hyphens only. Immutable after creation — embedded in login and password-reset links.
+                status: { $ref: "#/components/schemas/TenantStatus" }
+      responses:
+        "201":
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Tenant" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /tenants/{tenant}:
+    parameters:
+      - name: tenant
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Tenants]
+      operationId: getTenant
+      summary: Get a tenant
+      description: Super Admin (any tenant) or that tenant's own Tenant Admin (tenants.view permission).
+      responses:
+        "200":
+          description: Tenant
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Tenant" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: Not found — a Tenant Admin querying any tenant but their own gets 404, not 403 (RLS confines the row to begin with)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+    patch:
+      tags: [Tenants]
+      operationId: patchTenant
+      summary: Update a tenant's name or status
+      description: Super Admin (any tenant) or that tenant's own Tenant Admin (tenants.update permission). Slug is immutable.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 255 }
+                status: { $ref: "#/components/schemas/TenantStatus" }
+      responses:
+        "200":
+          description: Tenant updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Tenant" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [Tenants]
+      operationId: deleteTenant
+      summary: Suspend (soft-delete) a tenant
+      description: Super Admin only, hardcoded.
+      responses:
+        "200":
+          description: Tenant suspended
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users:
+    get:
+      tags: [Users]
+      operationId: getUsers
+      summary: List users
+      description: Tenant Admin/Manager see their own tenant's users (RLS-scoped). A Super Admin sees every user platform-wide by default, optionally filtered by tenant_id.
+      parameters:
+        - name: tenant_id
+          in: query
+          description: Super Admin only — ignored for any other caller.
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 25, maximum: 100 }
+      responses:
+        "200":
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/User" }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Users]
+      operationId: postUsers
+      summary: Create a user
+      description: >
+        A Tenant Admin can only ever provision a user inside their own tenant
+        — tenant_id in the request body is honored only for a Super Admin
+        actor and silently overridden otherwise. Sends the standard email
+        verification notification (admin-provisioned accounts are not
+        pre-verified).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                tenant_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Super Admin only. Omit (or null) to create another platform-level Super Admin.
+                name: { type: string, maxLength: 255 }
+                email: { type: string, format: email }
+                password: { type: string, format: password, minLength: 8 }
+                roles:
+                  type: array
+                  items: { $ref: "#/components/schemas/RoleName" }
+                  description: Only a Super Admin may include "Super Admin", and only when tenant_id is null.
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: Validation failure — includes a tenant-scoped duplicate-email check and the Super-Admin-role guard
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+
+  /users/{user}:
+    parameters:
+      - name: user
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: Get a user
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Users]
+      operationId: patchUser
+      summary: Update a user's name or email
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 255 }
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [Users]
+      operationId: deleteUser
+      summary: Deactivate (soft-delete) a user
+      description: A caller may never deactivate themselves.
+      responses:
+        "200":
+          description: User deactivated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users/{user}/roles:
+    patch:
+      tags: [Users]
+      operationId: patchUserRoles
+      summary: Replace a user's roles (full sync, not incremental)
+      description: >
+        Requires the users.manageRoles permission (Tenant Admin, or Super
+        Admin who bypasses all permission checks) and never targets the
+        caller's own account. Only a Super Admin may grant "Super Admin",
+        and only to a user with no tenant.
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles:
+                  type: array
+                  items: { $ref: "#/components/schemas/RoleName" }
+      responses:
+        "200":
+          description: Roles updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /users/{user}/skills:
+    patch:
+      tags: [Users]
+      operationId: patchUserSkills
+      summary: Replace an agent's qualified ticket types (full sync, not incremental)
+      description: >
+        Requires the agent_skills.manage permission (Tenant Admin, Manager,
+        or Super Admin). Drives which pool tickets the agent can see/pull —
+        see GET /ticket-pool.
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticket_type_ids]
+              properties:
+                ticket_type_ids:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Skills updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: One or more ticket type ids don't belong to this user's tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
 
   /tickets:
     get:
@@ -507,6 +914,13 @@ paths:
       tags: [Ticket Pool]
       operationId: getTicketPool
       summary: List unassigned tickets available to pull
+      description: >
+        Filtered by agent_skills for a caller who can't also assign tickets
+        to others (a front-line Support Agent): only ticket types they're
+        declared qualified for are visible. No skills configured means an
+        empty pool, not "everything" — fails closed. A caller who can assign
+        tickets to others (Manager/Tenant Admin/Super Admin) sees the full,
+        unfiltered pool. See PATCH /users/{user}/skills.
       parameters:
         - name: page
           in: query
@@ -539,6 +953,10 @@ paths:
       description: >
         Atomic via `SELECT ... FOR UPDATE` — under concurrent pulls, exactly
         one caller succeeds and the rest receive 409 ticket_already_assigned.
+        Skill eligibility is re-checked against the row-locked ticket here
+        too, not just in the pool listing — a raw ticket id for a type the
+        caller isn't qualified for is rejected regardless of how it was
+        obtained.
       parameters:
         - $ref: "#/components/parameters/TicketId"
       responses:
@@ -555,7 +973,10 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: Not authorized, or not qualified for this ticket type (code:ticket_not_qualified)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -1160,6 +1581,21 @@ components:
       type: string
       enum: ["Super Admin", "Tenant Admin", "Manager", "Support Agent", "Client"]
 
+    TenantStatus:
+      type: string
+      enum: [active, suspended]
+
+    Tenant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string, description: "Immutable after creation — used in login/password-reset links." }
+        status: { $ref: "#/components/schemas/TenantStatus" }
+        settings: { type: object }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
     User:
       type: object
       properties:
@@ -1171,6 +1607,10 @@ components:
         roles:
           type: array
           items: { $ref: "#/components/schemas/RoleName" }
+        skills:
+          type: array
+          items: { $ref: "#/components/schemas/TicketType" }
+          description: Ticket types this user is qualified to pull from the pool (only meaningful for agent roles). See PATCH /users/{user}/skills.
 
     TicketType:
       type: object
