@@ -37,6 +37,7 @@ class RoleAndPermissionSeeder extends Seeder
         'tickets.pull',
         'tickets.viewInternal',
         'ticket_types.manage',
+        'reports.view',
     ];
 
     /** @var array<string, list<string>> */
@@ -46,11 +47,13 @@ class RoleAndPermissionSeeder extends Seeder
             'tenants.view', 'tenants.update',
             'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.update', 'tickets.delete',
             'tickets.assign', 'tickets.viewInternal', 'ticket_types.manage',
+            'reports.view',
         ],
         RoleName::Manager->value => [
             'users.viewAny', 'users.view', 'users.update',
             'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.update',
             'tickets.assign', 'tickets.viewInternal',
+            'reports.view',
         ],
         // Deliberately no tickets.update: an agent's ability to edit a
         // ticket comes only from TicketPolicy's ownership check (they're

@@ -7,6 +7,7 @@ use App\Http\Requests\Tickets\StoreTicketRequest;
 use App\Http\Requests\Tickets\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
+use App\Services\Tickets\TicketSearchService;
 use App\Services\Tickets\TicketService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -14,45 +15,16 @@ use Illuminate\Http\Request;
 
 class TicketController extends Controller
 {
-    private const SORTABLE = ['created_at', 'updated_at', 'priority', 'status'];
-
-    public function __construct(private readonly TicketService $ticketService) {}
+    public function __construct(
+        private readonly TicketService $ticketService,
+        private readonly TicketSearchService $ticketSearchService,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Ticket::class);
 
-        $actor = $request->user();
-        $query = Ticket::query()->with(['ticketType', 'client', 'agent']);
-
-        // tickets.viewAny controls scope, not endpoint access (see
-        // TicketPolicy::viewAny): without it, a caller only ever sees
-        // tickets they own as client or are assigned as agent.
-        if (! $actor->can('tickets.viewAny')) {
-            $query->where(function ($q) use ($actor) {
-                $q->where('client_id', $actor->id)->orWhere('agent_id', $actor->id);
-            });
-        }
-
-        if ($status = $request->query('status')) {
-            $query->where('status', $status);
-        }
-
-        if ($priority = $request->query('priority')) {
-            $query->where('priority', $priority);
-        }
-
-        if ($agentId = $request->query('agent_id')) {
-            $query->where('agent_id', $agentId);
-        }
-
-        $sort = (string) $request->query('sort', '-created_at');
-        $column = ltrim($sort, '-');
-        $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
-        $query->orderBy(in_array($column, self::SORTABLE, true) ? $column : 'created_at', $direction);
-
-        $perPage = min((int) $request->query('per_page', 25), 100);
-        $tickets = $query->paginate($perPage);
+        $tickets = $this->ticketSearchService->search($request->user(), $request);
 
         return ApiResponse::success(
             data: TicketResource::collection($tickets->items()),

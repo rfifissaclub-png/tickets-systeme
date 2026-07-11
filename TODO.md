@@ -106,10 +106,30 @@ This is a multi-phase build. Each phase is scoped to land as a reviewable, teste
       signing; there is no practical way to test a live WebSocket handshake in Pest) — both need
       manual verification against the running stack, not just `vendor/bin/pest`.
 
-## Phase 5 — Search + reporting
+## Phase 5 — Search + reporting (done, pending live verification)
 
-- [ ] Postgres full-text search, filters, sorting, pagination.
-- [ ] KPI/report endpoints: tickets by tenant/agent, avg resolution, avg first response, SLA.
+- [x] Postgres full-text search: a `search_vector` STORED generated column on `tickets` (subject
+      weighted above description), GIN-indexed, matched via `websearch_to_tsquery` (forgiving of
+      user-typed quotes/AND/OR/-exclusion, unlike `plainto_tsquery`/`to_tsquery`). Kept in sync by
+      Postgres itself on every write — no trigger or application code has to remember to update it.
+- [x] Query-building logic extracted into `TicketSearchService` (ownership scoping, filters, search,
+      sorting) rather than living in the controller — advanced filters: comma-separated multi-value
+      status/priority, `ticket_type_id`, `client_id`, `agent_id`, `unassigned`, `created_from`/
+      `created_to` date range, on top of the pagination/sorting already in Phase 3. Relevance
+      (`ts_rank`) is the default sort while searching, unless a caller passes an explicit `sort`.
+- [x] `TicketReportService`: tenant overview (counts by status/priority, avg resolution time, avg
+      first-response time via `EXTRACT(EPOCH FROM ...)` + `AVG(...) FILTER (WHERE ...)`), tickets by
+      agent, a Super-Admin-only platform-wide tickets-by-tenant report (via the audited RLS bypass —
+      the one deliberately *not* gated by a permission string, since no tenant-level role should ever
+      be grantable this), and a daily created-vs-resolved trend series shaped for a future frontend
+      chart (Phase 6) — this phase returns chart-ready data, not a rendered chart.
+- [x] Explicitly scoped out: actual SLA policies/targets/breach tracking. The spec lists "SLA" both
+      as a Phase 5 KPI and as a future-roadmap "SLA engine" — this phase reports the raw metrics
+      (avg first response / resolution) an SLA system would be built on top of; the policy/target
+      model itself doesn't exist yet and stays future-roadmap scope.
+- [ ] **Live verification blocked** — same Docker gap as Phases 1–4. The `avg_resolution_seconds`
+      test asserts an exact value from a single controlled fixture (proving the EXTRACT/AVG math is
+      right, not just "some number came back") but has never actually run against Postgres.
 
 ## Phase 6 — Frontend (React 19)
 

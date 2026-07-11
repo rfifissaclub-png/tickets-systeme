@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Auth\ResetPasswordController;
 use App\Http\Controllers\Api\V1\Auth\VerifyEmailController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TicketAssignmentController;
 use App\Http\Controllers\Api\V1\TicketAttachmentController;
 use App\Http\Controllers\Api\V1\TicketCommentController;
@@ -66,4 +67,9 @@ Route::middleware(['auth:sanctum', 'tenant.context'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+
+    Route::get('/reports/overview', [ReportController::class, 'overview'])->name('reports.overview');
+    Route::get('/reports/tickets-by-agent', [ReportController::class, 'byAgent'])->name('reports.by-agent');
+    Route::get('/reports/tickets-by-tenant', [ReportController::class, 'byTenant'])->name('reports.by-tenant');
+    Route::get('/reports/ticket-trends', [ReportController::class, 'trends'])->name('reports.trends');
 });
