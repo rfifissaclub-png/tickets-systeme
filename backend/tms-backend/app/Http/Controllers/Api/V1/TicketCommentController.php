@@ -61,7 +61,7 @@ class TicketCommentController extends Controller
 
         return ApiResponse::success(
             data: new TicketCommentResource($comment->load('author')),
-            message: 'Comment added.',
+            message: __('messages.tickets.comment_added'),
             status: 201,
         );
     }

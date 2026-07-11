@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { useMutation } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { TicketIcon } from 'lucide-react'
 
@@ -15,20 +16,25 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuthStore } from '@/stores/auth-store'
 
-const schema = z.object({
-  tenant: z.string().trim().optional(),
-  email: z.string().trim().email('Enter a valid email address.'),
-  password: z.string().min(1, 'Password is required.'),
-  remember: z.boolean().optional(),
-})
+function useLoginSchema() {
+  const { t } = useTranslation()
+  return z.object({
+    tenant: z.string().trim().optional(),
+    email: z.string().trim().email(t('auth.invalidEmail')),
+    password: z.string().min(1, t('auth.passwordRequired')),
+    remember: z.boolean().optional(),
+  })
+}
 
-type FormValues = z.infer<typeof schema>
+type FormValues = z.infer<ReturnType<typeof useLoginSchema>>
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const setSession = useAuthStore((state) => state.setSession)
   const [formError, setFormError] = useState<string | null>(null)
+  const schema = useLoginSchema()
 
   const {
     register,
@@ -58,8 +64,8 @@ export function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
           <TicketIcon className="text-primary mb-2 size-8" aria-hidden="true" />
-          <CardTitle className="text-xl">Sign in to TMS</CardTitle>
-          <CardDescription>Enter your workspace, email, and password.</CardDescription>
+          <CardTitle className="text-xl">{t('auth.signInTitle')}</CardTitle>
+          <CardDescription>{t('auth.signInDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
@@ -70,17 +76,17 @@ export function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="tenant">Workspace</Label>
+              <Label htmlFor="tenant">{t('auth.workspace')}</Label>
               <Input
                 id="tenant"
-                placeholder="acme (leave blank for platform admin)"
+                placeholder={t('auth.workspacePlaceholder')}
                 autoComplete="organization"
                 {...register('tenant')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('auth.email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -93,9 +99,9 @@ export function LoginPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('auth.password')}</Label>
                 <Link to="/forgot-password" className="text-muted-foreground text-xs hover:underline">
-                  Forgot password?
+                  {t('auth.forgotPassword')}
                 </Link>
               </div>
               <Input
@@ -110,11 +116,11 @@ export function LoginPage() {
 
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="border-input size-4 rounded" {...register('remember')} />
-              Remember me
+              {t('auth.rememberMe')}
             </label>
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
+              {isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
             </Button>
           </form>
         </CardContent>

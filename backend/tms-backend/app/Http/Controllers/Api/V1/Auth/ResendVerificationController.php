@@ -14,11 +14,11 @@ class ResendVerificationController extends Controller
         $user = $request->user();
 
         if ($user->hasVerifiedEmail()) {
-            return ApiResponse::success(message: 'Email already verified.');
+            return ApiResponse::success(message: __('messages.auth.email_already_verified'));
         }
 
         $user->sendEmailVerificationNotification();
 
-        return ApiResponse::success(message: 'Verification link sent.');
+        return ApiResponse::success(message: __('messages.auth.verification_link_sent'));
     }
 }

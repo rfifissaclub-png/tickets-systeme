@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { BellIcon, CheckCheckIcon } from 'lucide-react'
 
 import {
@@ -15,15 +16,17 @@ import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications 
 import { cn } from '@/lib/utils'
 import type { AppNotification } from '@/types/models'
 
-function notificationMessage(notification: AppNotification): string {
-  return (notification.data.message as string | undefined) ?? 'New notification'
-}
-
 function notificationTicketId(notification: AppNotification): string | undefined {
   return notification.data.ticket_id as string | undefined
 }
 
 export function NotificationBell() {
+  const { t } = useTranslation()
+
+  function notificationMessage(notification: AppNotification): string {
+    return (notification.data.message as string | undefined) ?? t('notifications.newNotification')
+  }
+
   const { data, isLoading } = useNotifications()
   const { mutate: markRead } = useMarkNotificationRead()
   const { mutate: markAllRead, isPending: markingAll } = useMarkAllNotificationsRead()
@@ -33,7 +36,7 @@ export function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+        <Button variant="ghost" size="icon" className="relative" aria-label={t('notifications.title')}>
           <BellIcon className="size-4" />
           {unreadCount > 0 && (
             <span className="bg-destructive absolute top-1 right-1 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white">
@@ -44,7 +47,7 @@ export function NotificationBell() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <div className="flex items-center justify-between px-2 py-1.5">
-          <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+          <DropdownMenuLabel className="p-0">{t('notifications.title')}</DropdownMenuLabel>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
@@ -54,16 +57,16 @@ export function NotificationBell() {
               onClick={() => markAllRead()}
             >
               <CheckCheckIcon className="size-3" />
-              Mark all read
+              {t('notifications.markAllRead')}
             </Button>
           )}
         </div>
         <DropdownMenuSeparator />
 
-        {isLoading && <p className="text-muted-foreground px-2 py-4 text-center text-sm">Loading…</p>}
+        {isLoading && <p className="text-muted-foreground px-2 py-4 text-center text-sm">{t('notifications.loading')}</p>}
 
         {!isLoading && data?.notifications.length === 0 && (
-          <EmptyState icon={BellIcon} title="No notifications" className="border-none p-4" />
+          <EmptyState icon={BellIcon} title={t('notifications.emptyTitle')} className="border-none p-4" />
         )}
 
         {!isLoading &&

@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { LogOutIcon, UserIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -27,6 +28,7 @@ function initials(name: string): string {
 }
 
 export function UserMenu() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const clearSession = useAuthStore((state) => state.logout)
   const navigate = useNavigate()
@@ -40,7 +42,7 @@ export function UserMenu() {
       clearSession()
       navigate('/login', { replace: true })
     },
-    onError: () => toast.error('Logout request failed, but you have been signed out locally.'),
+    onError: () => toast.error(t('auth.logoutFailed')),
   })
 
   if (!user) return null
@@ -51,7 +53,7 @@ export function UserMenu() {
         <button
           type="button"
           className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Account menu"
+          aria-label={t('auth.accountMenu')}
         >
           <Avatar>
             <AvatarFallback>{initials(user.name) || <UserIcon className="size-4" />}</AvatarFallback>
@@ -66,7 +68,7 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={isPending} onClick={() => signOut()} variant="destructive">
           <LogOutIcon className="size-4" />
-          Log out
+          {t('auth.logOut')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

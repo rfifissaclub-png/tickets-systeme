@@ -26,7 +26,7 @@ class TicketTransitionController extends Controller
 
         return ApiResponse::success(
             data: new TicketResource($ticket->load(['ticketType', 'client', 'agent'])),
-            message: 'Ticket status updated.',
+            message: __('messages.tickets.status_updated'),
         );
     }
 }

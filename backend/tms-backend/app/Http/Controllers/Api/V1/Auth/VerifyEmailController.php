@@ -37,9 +37,9 @@ class VerifyEmailController extends Controller
         });
 
         if ($user === null) {
-            return ApiResponse::error('Invalid or expired verification link.', 403, code: 'invalid_verification_link');
+            return ApiResponse::error(__('messages.auth.invalid_verification_link'), 403, code: 'invalid_verification_link');
         }
 
-        return ApiResponse::success(message: 'Email verified successfully.');
+        return ApiResponse::success(message: __('messages.auth.email_verified_success'));
     }
 }

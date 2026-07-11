@@ -4,13 +4,14 @@ A multi-tenant enterprise SaaS ticketing platform (Laravel 12 API + React 19 fro
 
 ## Monorepo structure
 
-- `backend/tms-backend/` — Laravel 12 API (PHP 8.4). Multi-tenant via shared schema + PostgreSQL Row-Level Security. Sanctum auth, Spatie RBAC, queues, events/listeners, policies, DTOs, repositories/services.
-- `frontend/` — React 19 + TypeScript + Vite UI. Foundation, ticket domain UI, notifications, and reports all done (Phase 6.1–6.3).
-- `infra/` — Docker, Docker Compose, Nginx, CI/CD.
+- `backend/tms-backend/` — Laravel 12 API (PHP 8.4). Multi-tenant via shared schema + PostgreSQL Row-Level Security. Sanctum auth, Spatie RBAC, queues, events/listeners, policies, DTOs, repositories/services, English/French i18n.
+- `frontend/` — React 19 + TypeScript + Vite UI. Foundation, ticket domain UI, notifications, reports, and English/French i18n all done.
+- `infra/` — Docker (backend + frontend images), Docker Compose, Nginx, CI/CD.
+- `docs/` — architecture, ER diagram, OpenAPI spec, deployment guide.
 
 ## Status
 
-**Phases 1–5 done (backend), Phase 6.1–6.3 done (full frontend) — all pending live verification.** Backend: database + Docker foundation, auth flows, RBAC, ticket domain + pool/pull workflow, attachments + notifications + realtime, search + reporting. Frontend: Vite/Tailwind/shadcn scaffold, routing, state, typed API client, dark mode, auth pages, ticket list/detail/create/edit, comments, attachments, ticket pool, notification bell + realtime, KPI/report dashboard with charts. No prior code existed in this repository before Phase 1 — earlier revisions of this file overstated progress that was never actually committed. See [`TODO.md`](TODO.md) for the accurate, current checklist and the phase roadmap.
+**All 7 phases done (backend, frontend, i18n, CI/CD, docs) — all pending live verification.** Backend: database + Docker foundation, auth flows, RBAC, ticket domain + pool/pull workflow, attachments + notifications + realtime, search + reporting, English/French i18n. Frontend: Vite/Tailwind/shadcn scaffold, routing, state, typed API client, dark mode, auth pages, ticket list/detail/create/edit, comments, attachments, ticket pool, notification bell + realtime, KPI/report dashboard with charts, English/French i18n with a language switcher. Infra: Docker images for both apps, three GitHub Actions workflows (backend CI, frontend CI, Docker image build), hardened Nginx configs. No prior code existed in this repository before Phase 1 — earlier revisions of this file overstated progress that was never actually committed. See [`TODO.md`](TODO.md) for the accurate, current checklist and the phase roadmap, and [`docs/`](docs/) for architecture, ER diagram, API spec, and deployment documentation.
 
 Every backend migration/controller/test has been statically verified (`php -l`, `composer validate`, Laravel Pint) but **not yet run against a real PostgreSQL database** — local Docker access has been unavailable in the environment these phases were built in. The frontend typechecks, lints, and builds cleanly, but has never been opened in an actual browser (no browser automation tool available here) — run the commands below at the first opportunity and fix anything that surfaces before trusting either side as "working."
 
@@ -28,6 +29,7 @@ Every backend migration/controller/test has been statically verified (`php -l`, 
 - **Frontend**: React 19 + TypeScript + Vite, Tailwind v4, shadcn/ui (hand-built from Radix primitives — see Phase 6.1 in `TODO.md` for why), React Router v8, TanStack Query, Zustand, React Hook Form + Zod. `src/lib/api-client.ts` is an axios instance that unwraps the backend's `ApiResponse` envelope and attaches the Sanctum bearer token from the persisted auth store automatically. Ticket list/detail/create/edit, the comment thread (internal-note gating mirrors the backend's `tickets.viewInternal` permission as a UX nicety only), attachments, and the ticket pool all live under `src/pages/tickets/`; `TicketStatusSelect` keeps a hand-written mirror of the backend's status transition graph so the UI only *offers* legal moves — the backend remains the actual authority.
 - **Frontend realtime + notifications**: `src/lib/echo.ts` connects `laravel-echo`/`pusher-js` to Reverb with the Sanctum bearer token, subscribed once at the app shell level so it survives client-side navigation and is explicitly disconnected on logout. `NotificationBell` shows an unread badge and dropdown backed by a 60s poll as a fallback for missed WebSocket events, not the primary path.
 - **Frontend charts**: hand-built SVG/CSS (no charting library) under `src/components/charts/`, following the repo's `dataviz` skill — categorical hues (ticket status) and a sequential ramp (ticket priority, genuinely ordinal low→urgent) are both run through the skill's `scripts/validate_palette.js` against light *and* dark surfaces before use; chart chrome reuses this app's own shadcn tokens so charts match the rest of the UI.
+- **i18n**: English + French today, architecture supports unlimited languages. Backend: `lang/{en,fr}/*.php` + a locale-negotiating `SetLocale` middleware (`Accept-Language` header, quality-ordered, falls back to `en`) — every API response message goes through `__()`. Frontend: `react-i18next` + a Zustand-persisted locale store (mirrors the existing theme-store pattern) that also sets `Accept-Language` on every outgoing API request, so a French UI gets French validation errors back too, not just a French shell around English error text.
 
 ## Local development
 
@@ -61,3 +63,7 @@ Requires the backend running (see above) at the URL in `VITE_API_URL` (`.env.exa
 ## Documentation
 
 - [`TODO.md`](TODO.md) — phased build roadmap and current checklist.
+- [`docs/architecture.md`](docs/architecture.md) — system design: tenancy/RLS, auth/RBAC, ticket workflow, notifications/realtime, attachments, audit, i18n, reporting.
+- [`docs/er-diagram.md`](docs/er-diagram.md) — entity-relationship diagram.
+- [`docs/openapi.yaml`](docs/openapi.yaml) — OpenAPI 3.0 spec for every `/api/v1/*` endpoint.
+- [`docs/deployment.md`](docs/deployment.md) — env vars, release process, TLS/reverse-proxy expectations, CI/CD.

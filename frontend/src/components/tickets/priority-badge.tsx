@@ -1,17 +1,19 @@
+import { useTranslation } from 'react-i18next'
+
 import { Badge, type badgeVariants } from '@/components/ui/badge'
 import type { TicketPriority } from '@/types/models'
 import type { VariantProps } from 'class-variance-authority'
 
 type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
 
-const PRIORITY_CONFIG: Record<TicketPriority, { label: string; variant: BadgeVariant }> = {
-  low: { label: 'Low', variant: 'outline' },
-  medium: { label: 'Medium', variant: 'secondary' },
-  high: { label: 'High', variant: 'warning' },
-  urgent: { label: 'Urgent', variant: 'destructive' },
+const PRIORITY_VARIANT: Record<TicketPriority, BadgeVariant> = {
+  low: 'outline',
+  medium: 'secondary',
+  high: 'warning',
+  urgent: 'destructive',
 }
 
 export function TicketPriorityBadge({ priority }: { priority: TicketPriority }) {
-  const config = PRIORITY_CONFIG[priority]
-  return <Badge variant={config.variant}>{config.label}</Badge>
+  const { t } = useTranslation()
+  return <Badge variant={PRIORITY_VARIANT[priority]}>{t(`tickets.priority.${priority}`)}</Badge>
 }

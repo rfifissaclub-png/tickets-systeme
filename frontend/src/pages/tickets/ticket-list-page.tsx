@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { PlusIcon, SearchIcon, TicketIcon } from 'lucide-react'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -20,24 +21,11 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useTickets } from '@/hooks/use-tickets'
 import type { TicketPriority, TicketStatus } from '@/types/models'
 
-const STATUS_OPTIONS: { value: TicketStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All statuses' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'on_hold', label: 'On Hold' },
-  { value: 'resolved', label: 'Resolved' },
-  { value: 'closed', label: 'Closed' },
-]
-
-const PRIORITY_OPTIONS: { value: TicketPriority | 'all'; label: string }[] = [
-  { value: 'all', label: 'All priorities' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'urgent', label: 'Urgent' },
-]
+const STATUS_VALUES: (TicketStatus | 'all')[] = ['all', 'pending', 'in_progress', 'on_hold', 'resolved', 'closed']
+const PRIORITY_VALUES: (TicketPriority | 'all')[] = ['all', 'low', 'medium', 'high', 'urgent']
 
 export function TicketListPage() {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<TicketStatus | 'all'>('all')
   const [priority, setPriority] = useState<TicketPriority | 'all'>('all')
@@ -56,13 +44,13 @@ export function TicketListPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tickets</h1>
-          <p className="text-muted-foreground text-sm">Search, filter, and triage your tickets.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('tickets.list.title')}</h1>
+          <p className="text-muted-foreground text-sm">{t('tickets.list.subtitle')}</p>
         </div>
         <Button asChild>
           <Link to="/tickets/new">
             <PlusIcon className="size-4" />
-            New ticket
+            {t('tickets.list.newTicket')}
           </Link>
         </Button>
       </div>
@@ -76,9 +64,9 @@ export function TicketListPage() {
               setSearch(event.target.value)
               setPage(1)
             }}
-            placeholder="Search subject and description…"
+            placeholder={t('tickets.list.searchPlaceholder')}
             className="pl-9"
-            aria-label="Search tickets"
+            aria-label={t('tickets.list.searchLabel')}
           />
         </div>
 
@@ -89,13 +77,13 @@ export function TicketListPage() {
             setPage(1)
           }}
         >
-          <SelectTrigger className="w-[160px]" aria-label="Filter by status">
+          <SelectTrigger className="w-[160px]" aria-label={t('tickets.list.statusFilterLabel')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
+            {STATUS_VALUES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {value === 'all' ? t('tickets.list.allStatuses') : t(`tickets.status.${value}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -108,13 +96,13 @@ export function TicketListPage() {
             setPage(1)
           }}
         >
-          <SelectTrigger className="w-[160px]" aria-label="Filter by priority">
+          <SelectTrigger className="w-[160px]" aria-label={t('tickets.list.priorityFilterLabel')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {PRIORITY_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
+            {PRIORITY_VALUES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {value === 'all' ? t('tickets.list.allPriorities') : t(`tickets.priority.${value}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -132,19 +120,19 @@ export function TicketListPage() {
       {isError && (
         <EmptyState
           icon={TicketIcon}
-          title="Couldn't load tickets"
-          description="Something went wrong fetching the ticket list. Try refreshing the page."
+          title={t('tickets.list.loadErrorTitle')}
+          description={t('tickets.list.loadErrorDescription')}
         />
       )}
 
       {!isLoading && !isError && data && data.tickets.length === 0 && (
         <EmptyState
           icon={TicketIcon}
-          title="No tickets match your filters"
-          description="Try adjusting your search or filters, or create a new ticket."
+          title={t('tickets.list.emptyTitle')}
+          description={t('tickets.list.emptyDescription')}
           action={
             <Button asChild variant="outline">
-              <Link to="/tickets/new">New ticket</Link>
+              <Link to="/tickets/new">{t('tickets.list.newTicket')}</Link>
             </Button>
           }
         />
@@ -156,12 +144,12 @@ export function TicketListPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-muted-foreground text-left">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Subject</th>
-                  <th className="px-4 py-3 font-medium">Client</th>
-                  <th className="px-4 py-3 font-medium">Agent</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Priority</th>
-                  <th className="px-4 py-3 font-medium">Created</th>
+                  <th className="px-4 py-3 font-medium">{t('tickets.list.columnSubject')}</th>
+                  <th className="px-4 py-3 font-medium">{t('tickets.list.columnClient')}</th>
+                  <th className="px-4 py-3 font-medium">{t('tickets.list.columnAgent')}</th>
+                  <th className="px-4 py-3 font-medium">{t('tickets.list.columnStatus')}</th>
+                  <th className="px-4 py-3 font-medium">{t('tickets.list.columnPriority')}</th>
+                  <th className="px-4 py-3 font-medium">{t('tickets.list.columnCreated')}</th>
                 </tr>
               </thead>
               <tbody className="divide-border divide-y">
@@ -172,8 +160,8 @@ export function TicketListPage() {
                         {ticket.subject}
                       </Link>
                     </td>
-                    <td className="text-muted-foreground px-4 py-3">{ticket.client?.name ?? '—'}</td>
-                    <td className="text-muted-foreground px-4 py-3">{ticket.agent?.name ?? 'Unassigned'}</td>
+                    <td className="text-muted-foreground px-4 py-3">{ticket.client?.name ?? t('common.dash')}</td>
+                    <td className="text-muted-foreground px-4 py-3">{ticket.agent?.name ?? t('common.unassigned')}</td>
                     <td className="px-4 py-3">
                       <TicketStatusBadge status={ticket.status} />
                     </td>

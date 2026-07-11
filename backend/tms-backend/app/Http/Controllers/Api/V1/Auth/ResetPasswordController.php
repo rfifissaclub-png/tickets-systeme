@@ -15,12 +15,6 @@ use Illuminate\Validation\ValidationException;
 
 class ResetPasswordController extends Controller
 {
-    private const STATUS_MESSAGES = [
-        Password::INVALID_USER => 'Unable to reset the password for the given email.',
-        Password::INVALID_TOKEN => 'This password reset token is invalid or has expired.',
-        Password::RESET_THROTTLED => 'Please wait before retrying.',
-    ];
-
     public function __invoke(
         ResetPasswordRequest $request,
         TenantAwareUserResolver $resolver,
@@ -52,11 +46,13 @@ class ResetPasswordController extends Controller
         });
 
         if ($status !== Password::PASSWORD_RESET) {
+            // $status is itself a translation key (Password::INVALID_USER ===
+            // 'passwords.user', etc.) — see lang/{en,fr}/passwords.php.
             throw ValidationException::withMessages([
-                'email' => [self::STATUS_MESSAGES[$status] ?? 'Unable to reset the password.'],
+                'email' => [__($status)],
             ]);
         }
 
-        return ApiResponse::success(message: 'Password reset successfully.');
+        return ApiResponse::success(message: __('messages.auth.password_reset_success'));
     }
 }

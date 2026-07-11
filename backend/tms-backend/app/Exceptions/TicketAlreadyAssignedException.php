@@ -9,6 +9,6 @@ class TicketAlreadyAssignedException extends RuntimeException
 {
     public function __construct(public readonly Ticket $ticket)
     {
-        parent::__construct('This ticket has already been claimed by another agent.');
+        parent::__construct(__('messages.tickets.already_assigned'));
     }
 }

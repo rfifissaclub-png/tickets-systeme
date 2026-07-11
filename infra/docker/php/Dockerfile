@@ -59,14 +59,18 @@ CMD ["php-fpm"]
 #
 # Deliberately does NOT run artisan config:cache/route:cache/event:cache here:
 # those would bake build-time environment values (this stage has no real
-# APP_KEY/DB credentials/etc. available) into the image. Caching must happen
-# at container start, after real env vars are injected — wired into the
-# deploy entrypoint in the Phase 7 CI/CD hardening pass.
+# APP_KEY/DB credentials/etc. available) into the image. Caching happens at
+# container start instead, via entrypoint.sh, after real env vars are injected.
 FROM base AS production
+
+COPY infra/docker/php/opcache-production.ini /usr/local/etc/php/conf.d/zzz-opcache-production.ini
+COPY infra/docker/php/entrypoint.sh /usr/local/bin/tms-entrypoint.sh
+RUN chmod +x /usr/local/bin/tms-entrypoint.sh
 
 COPY --from=dependencies /var/www/html /var/www/html
 RUN chown -R tms:tms /var/www/html
 
 USER tms
 
+ENTRYPOINT ["/usr/local/bin/tms-entrypoint.sh"]
 CMD ["php-fpm"]

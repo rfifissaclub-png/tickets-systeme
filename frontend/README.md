@@ -11,6 +11,7 @@ React 19 + TypeScript + Vite UI for the Enterprise Ticket Management System. See
 - **Client state**: Zustand (`src/stores/`), persisted to localStorage
 - **Forms**: React Hook Form + Zod
 - **API**: `src/lib/api-client.ts` — axios instance that unwraps the backend's `ApiResponse` envelope and attaches the Sanctum bearer token automatically
+- **i18n**: `react-i18next`, locale resources in `src/i18n/locales/{en,fr}.json`, a Zustand-persisted `locale-store` (mirrors `theme-store`) that also sets `Accept-Language` on every API request
 
 ## Commands
 

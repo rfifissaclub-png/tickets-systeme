@@ -134,6 +134,28 @@ services:
     depends_on:
       - backend
 
+  # Production-style build of the SPA, served by its own nginx — mirrors what
+  # actually ships (infra/docker/frontend/Dockerfile), unlike local dev where
+  # `npm run dev` is run directly on the host against this same backend.
+  frontend:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8080/api/v1
+        VITE_APP_URL: http://localhost:8080
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-192812dbb36576c8ee12}
+        VITE_REVERB_HOST: localhost
+        VITE_REVERB_PORT: "8085"
+        VITE_REVERB_SCHEME: http
+    environment:
+      API_ORIGIN: http://localhost:8080
+      WS_ORIGIN: ws://localhost:8085
+    ports:
+      - "8081:80"
+    depends_on:
+      - nginx
+
 volumes:
   postgres_data:
   redis_data:

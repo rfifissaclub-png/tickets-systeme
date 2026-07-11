@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeftIcon, PencilIcon, TicketIcon, TrashIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -18,6 +19,7 @@ import { toApiError } from '@/lib/api-client'
 import { useDeleteTicket, useTicket, useUpdateTicket } from '@/hooks/use-tickets'
 
 export function TicketDetailPage() {
+  const { t } = useTranslation()
   const { ticketId } = useParams<{ ticketId: string }>()
   const navigate = useNavigate()
   const { data: ticket, isLoading, isError } = useTicket(ticketId)
@@ -39,11 +41,11 @@ export function TicketDetailPage() {
     return (
       <EmptyState
         icon={TicketIcon}
-        title="Ticket not found"
-        description="It may have been deleted, or you may not have access to it."
+        title={t('tickets.detail.notFoundTitle')}
+        description={t('tickets.detail.notFoundDescription')}
         action={
           <Button asChild variant="outline">
-            <Link to="/tickets">Back to tickets</Link>
+            <Link to="/tickets">{t('tickets.detail.backToTickets')}</Link>
           </Button>
         }
       />
@@ -57,7 +59,7 @@ export function TicketDetailPage() {
     try {
       await update(values)
       setEditing(false)
-      toast.success('Ticket updated.')
+      toast.success(t('tickets.detail.updatedToast'))
     } catch (error) {
       setFormError(toApiError(error).message)
     }
@@ -65,11 +67,11 @@ export function TicketDetailPage() {
 
   const onDelete = async () => {
     if (!ticketId) return
-    if (!window.confirm('Delete this ticket? This cannot be undone.')) return
+    if (!window.confirm(t('tickets.detail.deleteConfirm'))) return
 
     try {
       await remove(ticketId)
-      toast.success('Ticket deleted.')
+      toast.success(t('tickets.detail.deletedToast'))
       navigate('/tickets')
     } catch (error) {
       toast.error(toApiError(error).message)
@@ -82,7 +84,7 @@ export function TicketDetailPage() {
         <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2">
           <Link to="/tickets">
             <ArrowLeftIcon className="size-4" />
-            Back to tickets
+            {t('tickets.detail.backToTickets')}
           </Link>
         </Button>
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -100,12 +102,12 @@ export function TicketDetailPage() {
             {!isReadOnly && !editing && (
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                 <PencilIcon className="size-4" />
-                Edit
+                {t('tickets.detail.edit')}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={onDelete}>
               <TrashIcon className="size-4" />
-              Delete
+              {t('tickets.detail.delete')}
             </Button>
           </div>
         </div>
@@ -113,7 +115,7 @@ export function TicketDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Details</CardTitle>
+          <CardTitle className="text-sm">{t('tickets.detail.detailsTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {editing ? (
@@ -125,7 +127,7 @@ export function TicketDetailPage() {
                 priority: ticket.priority,
               }}
               onSubmit={onSubmitEdit}
-              submitLabel="Save changes"
+              submitLabel={t('tickets.detail.saveChanges')}
               formError={formError}
               onCancel={() => setEditing(false)}
             />
@@ -137,19 +139,19 @@ export function TicketDetailPage() {
 
               <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <dt className="text-muted-foreground">Client</dt>
-                  <dd>{ticket.client?.name ?? '—'}</dd>
+                  <dt className="text-muted-foreground">{t('tickets.detail.client')}</dt>
+                  <dd>{ticket.client?.name ?? t('common.dash')}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Agent</dt>
-                  <dd>{ticket.agent?.name ?? 'Unassigned'}</dd>
+                  <dt className="text-muted-foreground">{t('tickets.detail.agent')}</dt>
+                  <dd>{ticket.agent?.name ?? t('common.unassigned')}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Created</dt>
+                  <dt className="text-muted-foreground">{t('tickets.detail.created')}</dt>
                   <dd>{new Date(ticket.created_at).toLocaleString()}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Updated</dt>
+                  <dt className="text-muted-foreground">{t('tickets.detail.updated')}</dt>
                   <dd>{new Date(ticket.updated_at).toLocaleString()}</dd>
                 </div>
               </dl>
@@ -157,7 +159,7 @@ export function TicketDetailPage() {
               <Separator />
 
               <div className="flex items-center gap-3">
-                <span className="text-muted-foreground text-sm">Status</span>
+                <span className="text-muted-foreground text-sm">{t('tickets.detail.status')}</span>
                 <TicketStatusSelect ticketId={ticket.id} status={ticket.status} />
               </div>
             </>

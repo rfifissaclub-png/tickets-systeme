@@ -10,7 +10,7 @@ import {
 import type { RoleName } from '@/types/models'
 
 export interface NavItem {
-  label: string
+  labelKey: string
   to: string
   icon: LucideIcon
   /** Omit to show for every authenticated role. */
@@ -18,22 +18,22 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon },
-  { label: 'Tickets', to: '/tickets', icon: TicketIcon },
+  { labelKey: 'nav.dashboard', to: '/', icon: LayoutDashboardIcon },
+  { labelKey: 'nav.tickets', to: '/tickets', icon: TicketIcon },
   {
-    label: 'Ticket Pool',
+    labelKey: 'nav.ticketPool',
     to: '/ticket-pool',
     icon: InboxIcon,
     roles: ['Support Agent', 'Manager', 'Tenant Admin', 'Super Admin'],
   },
   {
-    label: 'Reports',
+    labelKey: 'nav.reports',
     to: '/reports',
     icon: BarChart3Icon,
     roles: ['Manager', 'Tenant Admin', 'Super Admin'],
   },
   {
-    label: 'Ticket Types',
+    labelKey: 'nav.ticketTypes',
     to: '/ticket-types',
     icon: TagsIcon,
     roles: ['Tenant Admin', 'Super Admin'],

@@ -4,6 +4,7 @@ use App\Exceptions\InvalidTicketTransitionException;
 use App\Exceptions\TicketAlreadyAssignedException;
 use App\Exceptions\TicketIsReadOnlyException;
 use App\Http\Middleware\ResolveTenantContext;
+use App\Http\Middleware\SetLocale;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -37,6 +38,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant.context' => ResolveTenantContext::class,
         ]);
+
+        // Every API request negotiates its own locale from Accept-Language —
+        // there's no session to remember one in, and unlike tenant.context
+        // this doesn't depend on being authenticated first.
+        $middleware->appendToGroup('api', SetLocale::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (ValidationException $e, Request $request) {
@@ -45,7 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return ApiResponse::error(
-                message: 'The given data was invalid.',
+                message: __('messages.validation_failed'),
                 status: 422,
                 errors: $e->errors(),
                 code: 'validation_failed',
@@ -57,7 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return ApiResponse::error(message: 'Unauthenticated.', status: 401, code: 'unauthenticated');
+            return ApiResponse::error(message: __('messages.http.unauthenticated'), status: 401, code: 'unauthenticated');
         });
 
         $exceptions->render(function (AuthorizationException $e, Request $request) {
@@ -65,7 +71,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return ApiResponse::error(message: $e->getMessage() ?: 'This action is unauthorized.', status: 403, code: 'forbidden');
+            return ApiResponse::error(message: $e->getMessage() ?: __('messages.http.forbidden'), status: 403, code: 'forbidden');
         });
 
         $exceptions->render(function (TicketAlreadyAssignedException $e, Request $request) {
@@ -97,7 +103,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return ApiResponse::error(message: 'The requested resource was not found.', status: 404, code: 'not_found');
+            return ApiResponse::error(message: __('messages.http.not_found'), status: 404, code: 'not_found');
         });
 
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
@@ -105,7 +111,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return ApiResponse::error(message: 'The requested resource was not found.', status: 404, code: 'not_found');
+            return ApiResponse::error(message: __('messages.http.not_found'), status: 404, code: 'not_found');
         });
 
         $exceptions->render(function (TooManyRequestsHttpException $e, Request $request) {
@@ -113,7 +119,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return ApiResponse::error(message: 'Too many requests.', status: 429, code: 'rate_limited');
+            return ApiResponse::error(message: __('messages.http.rate_limited'), status: 429, code: 'rate_limited');
         });
 
         $exceptions->render(function (HttpExceptionInterface $e, Request $request) {
@@ -121,7 +127,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return ApiResponse::error(message: $e->getMessage() ?: 'An error occurred.', status: $e->getStatusCode(), code: 'http_error');
+            return ApiResponse::error(message: $e->getMessage() ?: __('messages.http.http_error'), status: $e->getStatusCode(), code: 'http_error');
         });
 
         $exceptions->render(function (Throwable $e, Request $request) {
@@ -129,6 +135,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return ApiResponse::error(message: 'Server error.', status: 500, code: 'server_error');
+            return ApiResponse::error(message: __('messages.http.server_error'), status: 500, code: 'server_error');
         });
     })->create();

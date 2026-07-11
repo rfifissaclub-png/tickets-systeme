@@ -32,7 +32,7 @@ class TicketAttachmentController extends Controller
 
         return ApiResponse::success(
             data: new TicketAttachmentResource($attachment->load('uploader')),
-            message: 'File uploaded.',
+            message: __('messages.attachments.uploaded'),
             status: 201,
         );
     }
@@ -50,6 +50,6 @@ class TicketAttachmentController extends Controller
 
         $this->fileUploadService->delete($attachment);
 
-        return ApiResponse::success(message: 'Attachment deleted.');
+        return ApiResponse::success(message: __('messages.attachments.deleted'));
     }
 }

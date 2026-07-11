@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -20,22 +21,15 @@ const ALLOWED_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   closed: [],
 }
 
-const STATUS_LABELS: Record<TicketStatus, string> = {
-  pending: 'Pending',
-  in_progress: 'In Progress',
-  on_hold: 'On Hold',
-  resolved: 'Resolved',
-  closed: 'Closed',
-}
-
 export function TicketStatusSelect({ ticketId, status }: { ticketId: string; status: TicketStatus }) {
+  const { t } = useTranslation()
   const { mutate, isPending } = useTransitionTicketStatus(ticketId)
   const [pendingValue, setPendingValue] = useState<TicketStatus | null>(null)
 
   const options = ALLOWED_TRANSITIONS[status]
 
   if (options.length === 0) {
-    return <span className="text-muted-foreground text-sm">No further transitions — this ticket is closed.</span>
+    return <span className="text-muted-foreground text-sm">{t('tickets.detail.noFurtherTransitions')}</span>
   }
 
   return (
@@ -46,7 +40,8 @@ export function TicketStatusSelect({ ticketId, status }: { ticketId: string; sta
         const nextStatus = value as TicketStatus
         setPendingValue(nextStatus)
         mutate(nextStatus, {
-          onSuccess: () => toast.success(`Status changed to ${STATUS_LABELS[nextStatus]}.`),
+          onSuccess: () =>
+            toast.success(t('tickets.detail.statusChangedToast', { status: t(`tickets.status.${nextStatus}`) })),
           onError: (error) => {
             toast.error(toApiError(error).message)
             setPendingValue(null)
@@ -54,14 +49,16 @@ export function TicketStatusSelect({ ticketId, status }: { ticketId: string; sta
         })
       }}
     >
-      <SelectTrigger className="w-[180px]" aria-label="Change status">
+      <SelectTrigger className="w-[180px]" aria-label={t('tickets.detail.status')}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={status}>{STATUS_LABELS[status]} (current)</SelectItem>
+        <SelectItem value={status}>
+          {t(`tickets.status.${status}`)} {t('tickets.detail.current')}
+        </SelectItem>
         {options.map((option) => (
           <SelectItem key={option} value={option}>
-            Move to {STATUS_LABELS[option]}
+            {t('tickets.detail.moveTo', { status: t(`tickets.status.${option}`) })}
           </SelectItem>
         ))}
       </SelectContent>

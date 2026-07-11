@@ -24,6 +24,6 @@ class LogoutController extends Controller
         // LogSuccessfulLogout still records the audit entry.
         event(new Logout('sanctum', $user));
 
-        return ApiResponse::success(message: 'Logged out successfully.');
+        return ApiResponse::success(message: __('messages.auth.logout_success'));
     }
 }

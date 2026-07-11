@@ -1,0 +1,1231 @@
+openapi: 3.0.3
+info:
+  title: TMS API
+  description: >
+    Multi-tenant enterprise ticketing SaaS API. Every tenant-owned table is
+    isolated by PostgreSQL Row-Level Security, bound per-request from the
+    authenticated principal (see docs/architecture.md). All authenticated
+    endpoints require a Sanctum bearer token obtained from POST /auth/login.
+  version: "1.0"
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.your-tms-domain.tld/api/v1
+    description: Production (placeholder — replace with your real domain, see docs/deployment.md)
+  - url: http://localhost:8080/api/v1
+    description: Local Docker Compose (see infra/docker-compose.yml)
+
+tags:
+  - name: Auth
+    description: Login, logout, password reset, and email verification.
+  - name: Me
+    description: The authenticated caller's own profile.
+  - name: Tickets
+    description: Ticket CRUD, status transitions, and assignment.
+  - name: Ticket Pool
+    description: Unassigned tickets available to be claimed.
+  - name: Ticket Types
+    description: Tenant-configurable ticket categories.
+  - name: Comments
+    description: Ticket conversation, including internal (staff-only) notes.
+  - name: Attachments
+    description: File uploads and signed downloads on a ticket.
+  - name: Notifications
+    description: The authenticated caller's notification inbox.
+  - name: Reports
+    description: Tenant and platform-wide ticket KPIs.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: postAuthLogin
+      summary: Log in and obtain a bearer token
+      description: >
+        Unauthenticated. Rate limited to 5 requests/minute per email+tenant
+        pair. The same generic error is returned whether the tenant, email,
+        or password is wrong, to prevent account enumeration.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                tenant:
+                  type: string
+                  nullable: true
+                  description: Tenant slug. Omit for a platform Super Admin login.
+                  example: acme
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                remember:
+                  type: boolean
+                  description: If true, the issued token never expires.
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user: { $ref: "#/components/schemas/User" }
+                          token: { type: string, description: Sanctum plain-text bearer token }
+                          expires_at: { type: string, format: date-time, nullable: true }
+        "422":
+          description: Invalid credentials or validation failure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      operationId: postAuthForgotPassword
+      summary: Request a password reset link
+      description: >
+        Unauthenticated. Rate limited to 3 requests/minute. Always returns
+        the same success message regardless of whether the account exists,
+        to prevent account enumeration.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                tenant: { type: string, nullable: true }
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Reset link sent if the account exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      operationId: postAuthResetPassword
+      summary: Reset a password using an emailed token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, token, password, password_confirmation]
+              properties:
+                tenant: { type: string, nullable: true }
+                email: { type: string, format: email }
+                token: { type: string }
+                password: { type: string, format: password, minLength: 8 }
+                password_confirmation: { type: string, format: password }
+      responses:
+        "200":
+          description: Password reset
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "422":
+          description: Invalid/expired token or validation failure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/email/verify/{id}/{hash}:
+    get:
+      tags: [Auth]
+      operationId: getAuthEmailVerifyIdHash
+      summary: Verify an email address via the signed link sent on registration
+      description: >
+        Unauthenticated by nature (a mail client has no bearer token); the
+        signed-URL signature plus the hash of the user's email are the
+        entire authorization boundary. Rate limited to 6 requests/minute per IP.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: hash
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Email verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "403":
+          description: Invalid or expired verification link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: postAuthLogout
+      summary: Revoke the current bearer token
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /auth/email/verification-notification:
+    post:
+      tags: [Auth]
+      operationId: postAuthEmailVerificationNotification
+      summary: Resend the email verification link
+      description: Rate limited to 6 requests/minute per IP.
+      responses:
+        "200":
+          description: Verification link sent (or already verified)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /me:
+    get:
+      tags: [Me]
+      operationId: getMe
+      summary: Get the authenticated user's profile and roles
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /tickets:
+    get:
+      tags: [Tickets]
+      operationId: getTickets
+      summary: List/search tickets
+      description: >
+        Without the `tickets.viewAny` permission, results are scoped to
+        tickets the caller owns as client or is assigned as agent, regardless
+        of filters passed.
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Postgres full-text search (websearch syntax — quotes, AND/OR, "-exclude") over subject + description.
+        - name: status
+          in: query
+          schema: { type: string }
+          description: Comma-separated list of TicketStatus values.
+        - name: priority
+          in: query
+          schema: { type: string }
+          description: Comma-separated list of TicketPriority values.
+        - name: agent_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: client_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: ticket_type_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: unassigned
+          in: query
+          schema: { type: boolean }
+        - name: created_from
+          in: query
+          schema: { type: string, format: date }
+        - name: created_to
+          in: query
+          schema: { type: string, format: date }
+        - name: sort
+          in: query
+          schema: { type: string, default: "-created_at" }
+          description: One of created_at, updated_at, priority, status; prefix with "-" for descending. Ignored (ranked by search relevance instead) when `search` is set and `sort` is omitted.
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 25, maximum: 100 }
+      responses:
+        "200":
+          description: Paginated ticket list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Ticket" }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+    post:
+      tags: [Tickets]
+      operationId: postTickets
+      summary: Create a ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticket_type_id, subject, description]
+              properties:
+                ticket_type_id: { type: string, format: uuid }
+                client_id:
+                  type: string
+                  format: uuid
+                  description: Staff-only — defaults to the caller for Client-role callers.
+                subject: { type: string, maxLength: 255 }
+                description: { type: string }
+                priority: { $ref: "#/components/schemas/TicketPriority" }
+      responses:
+        "201":
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Ticket" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /tickets/{ticket}:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    get:
+      tags: [Tickets]
+      operationId: getTicketsTicket
+      summary: Get a ticket
+      responses:
+        "200":
+          description: Ticket
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Ticket" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Tickets]
+      operationId: patchTicketsTicket
+      summary: Update a ticket
+      description: Rejected with 409 if the ticket is resolved or closed (read-only).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ticket_type_id: { type: string, format: uuid }
+                subject: { type: string, maxLength: 255 }
+                description: { type: string }
+                priority: { $ref: "#/components/schemas/TicketPriority" }
+      responses:
+        "200":
+          description: Ticket updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Ticket" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Ticket is read-only (resolved/closed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [Tickets]
+      operationId: deleteTicketsTicket
+      summary: Delete a ticket
+      responses:
+        "200":
+          description: Ticket deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tickets/{ticket}/status:
+    patch:
+      tags: [Tickets]
+      operationId: patchTicketsTicketStatus
+      summary: Transition a ticket's status
+      description: >
+        Enforced against the fixed transition graph (pending → in_progress|on_hold;
+        in_progress → on_hold|resolved; on_hold → in_progress; resolved →
+        in_progress|closed; closed → none) both in the application layer and by
+        a Postgres trigger.
+      parameters:
+        - $ref: "#/components/parameters/TicketId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: "#/components/schemas/TicketStatus" }
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Ticket" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Requested transition is not allowed from the current status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+
+  /tickets/{ticket}/assign:
+    patch:
+      tags: [Tickets]
+      operationId: patchTicketsTicketAssign
+      summary: Assign a ticket to a specific agent
+      description: Agent must hold Support Agent, Manager, or Tenant Admin.
+      parameters:
+        - $ref: "#/components/parameters/TicketId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Ticket assigned
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Ticket" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /ticket-pool:
+    get:
+      tags: [Ticket Pool]
+      operationId: getTicketPool
+      summary: List unassigned tickets available to pull
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 25, maximum: 100 }
+      responses:
+        "200":
+          description: Paginated pool
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Ticket" }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /ticket-pool/{ticket}/pull:
+    post:
+      tags: [Ticket Pool]
+      operationId: postTicketPoolTicketPull
+      summary: Claim an unassigned ticket for the caller
+      description: >
+        Atomic via `SELECT ... FOR UPDATE` — under concurrent pulls, exactly
+        one caller succeeds and the rest receive 409 ticket_already_assigned.
+      parameters:
+        - $ref: "#/components/parameters/TicketId"
+      responses:
+        "200":
+          description: Ticket assigned to the caller
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Ticket" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Already claimed by another agent (code:ticket_already_assigned)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+
+  /ticket-types:
+    get:
+      tags: [Ticket Types]
+      operationId: getTicketTypes
+      summary: List active ticket types for the current tenant
+      responses:
+        "200":
+          description: Ticket types
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/TicketType" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+    post:
+      tags: [Ticket Types]
+      operationId: postTicketTypes
+      summary: Create a ticket type
+      description: Requires Tenant Admin (or Super Admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 255 }
+                description: { type: string, nullable: true }
+                is_active: { type: boolean, default: true }
+      responses:
+        "201":
+          description: Ticket type created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/TicketType" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /ticket-types/{ticketType}:
+    parameters:
+      - name: ticketType
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Ticket Types]
+      operationId: patchTicketTypesTicketType
+      summary: Update a ticket type
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 255 }
+                description: { type: string, nullable: true }
+                is_active: { type: boolean }
+      responses:
+        "200":
+          description: Ticket type updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/TicketType" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [Ticket Types]
+      operationId: deleteTicketTypesTicketType
+      summary: Delete a ticket type
+      responses:
+        "200":
+          description: Ticket type deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tickets/{ticket}/comments:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    get:
+      tags: [Comments]
+      operationId: getTicketsTicketComments
+      summary: List a ticket's comments
+      description: Internal notes are omitted unless the caller has the tickets.viewInternal permission.
+      responses:
+        "200":
+          description: Comments
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/TicketComment" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Comments]
+      operationId: postTicketsTicketComments
+      summary: Post a comment
+      description: "Internal notes (is_internal = true) require the tickets.viewInternal permission and never notify the client."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+                is_internal: { type: boolean, default: false }
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/TicketComment" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Ticket is read-only (resolved/closed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /tickets/{ticket}/attachments:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    get:
+      tags: [Attachments]
+      operationId: getTicketsTicketAttachments
+      summary: List a ticket's attachments
+      responses:
+        "200":
+          description: Attachments
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/TicketAttachment" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Attachments]
+      operationId: postTicketsTicketAttachments
+      summary: Upload a file to a ticket
+      description: Max 25 MB; MIME type is verified against the actual file content (fileinfo), not the client-supplied Content-Type.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201":
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/TicketAttachment" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Ticket is read-only (resolved/closed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /attachments/{attachment}/download:
+    get:
+      tags: [Attachments]
+      operationId: getAttachmentsAttachmentDownload
+      summary: Get a short-lived signed download URL for an attachment
+      description: Returns a presigned URL, generated fresh per request — not embedded in the attachment list response.
+      parameters:
+        - name: attachment
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Signed URL
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          url: { type: string, format: uri }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /attachments/{attachment}:
+    delete:
+      tags: [Attachments]
+      operationId: deleteAttachmentsAttachment
+      summary: Delete an attachment
+      description: Allowed for the uploader or staff roles (Support Agent, Manager, Tenant Admin, Super Admin).
+      parameters:
+        - name: attachment
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Attachment deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      operationId: getNotifications
+      summary: List the caller's notifications
+      parameters:
+        - name: unread_only
+          in: query
+          schema: { type: boolean }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 25, maximum: 100 }
+      responses:
+        "200":
+          description: Paginated notifications
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Notification" }
+                      meta:
+                        allOf:
+                          - $ref: "#/components/schemas/PaginationMeta"
+                          - type: object
+                            properties:
+                              unread_count: { type: integer }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /notifications/{notification}/read:
+    patch:
+      tags: [Notifications]
+      operationId: patchNotificationsNotificationRead
+      summary: Mark a single notification as read
+      parameters:
+        - name: notification
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Notification marked read
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Notification" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /notifications/read-all:
+    patch:
+      tags: [Notifications]
+      operationId: patchNotificationsReadAll
+      summary: Mark all of the caller's notifications as read
+      responses:
+        "200":
+          description: All notifications marked read
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiSuccessEnvelope" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /reports/overview:
+    get:
+      tags: [Reports]
+      operationId: getReportsOverview
+      summary: Tenant-wide ticket KPIs
+      description: Requires the reports.view permission (Manager, Tenant Admin, Super Admin).
+      responses:
+        "200":
+          description: Overview KPIs
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          total_tickets: { type: integer }
+                          by_status:
+                            type: object
+                            additionalProperties: { type: integer }
+                          by_priority:
+                            type: object
+                            additionalProperties: { type: integer }
+                          avg_resolution_seconds: { type: number, nullable: true }
+                          avg_first_response_seconds: { type: number, nullable: true }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /reports/tickets-by-agent:
+    get:
+      tags: [Reports]
+      operationId: getReportsTicketsByAgent
+      summary: Per-agent ticket counts and average response/resolution time
+      description: Requires the reports.view permission.
+      responses:
+        "200":
+          description: Per-agent breakdown
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            agent_id: { type: string, format: uuid }
+                            agent_name: { type: string }
+                            ticket_count: { type: integer }
+                            avg_resolution_seconds: { type: number, nullable: true }
+                            avg_first_response_seconds: { type: number, nullable: true }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /reports/tickets-by-tenant:
+    get:
+      tags: [Reports]
+      operationId: getReportsTicketsByTenant
+      summary: Platform-wide ticket counts by tenant
+      description: Super Admin only — not gated by a grantable permission.
+      responses:
+        "200":
+          description: Per-tenant breakdown
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            tenant_id: { type: string, format: uuid }
+                            tenant_name: { type: string }
+                            ticket_count: { type: integer }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /reports/ticket-trends:
+    get:
+      tags: [Reports]
+      operationId: getReportsTicketTrends
+      summary: Daily ticket creation vs. resolution counts
+      description: Requires the reports.view permission. Defaults to the last 30 days.
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Daily trend series
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date: { type: string, format: date }
+                            created: { type: integer }
+                            resolved: { type: integer }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: from is after to
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: "Laravel Sanctum personal access token"
+
+  parameters:
+    TicketId:
+      name: ticket
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    Unauthenticated:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+    Forbidden:
+      description: Authenticated but not permitted to perform this action
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+    NotFound:
+      description: Resource does not exist, or exists in another tenant (RLS makes the two indistinguishable)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+    ValidationError:
+      description: Request failed validation
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiErrorEnvelope" }
+
+  schemas:
+    ApiSuccessEnvelope:
+      type: object
+      description: Shared envelope for every successful response.
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, nullable: true }
+        data: {}
+        meta: { type: object, nullable: true }
+
+    ApiErrorEnvelope:
+      type: object
+      description: Shared envelope for every error response.
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string }
+        errors:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: array
+            items: { type: string }
+        code:
+          type: string
+          nullable: true
+          description: Machine-readable error code (e.g. ticket_already_assigned, invalid_ticket_transition, rate_limited).
+
+    PaginationMeta:
+      type: object
+      properties:
+        current_page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+        last_page: { type: integer }
+
+    TicketStatus:
+      type: string
+      enum: [pending, in_progress, on_hold, resolved, closed]
+
+    TicketPriority:
+      type: string
+      enum: [low, medium, high, urgent]
+
+    RoleName:
+      type: string
+      enum: ["Super Admin", "Tenant Admin", "Manager", "Support Agent", "Client"]
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid, nullable: true, description: "null for a platform Super Admin" }
+        name: { type: string }
+        email: { type: string, format: email }
+        email_verified_at: { type: string, format: date-time, nullable: true }
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/RoleName" }
+
+    TicketType:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Ticket:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ticket_type: { $ref: "#/components/schemas/TicketType" }
+        client: { $ref: "#/components/schemas/User" }
+        agent:
+          allOf: [{ $ref: "#/components/schemas/User" }]
+          description: Null while the ticket is unassigned (sitting in the pool).
+        subject: { type: string }
+        description: { type: string }
+        status: { $ref: "#/components/schemas/TicketStatus" }
+        priority: { $ref: "#/components/schemas/TicketPriority" }
+        first_response_at: { type: string, format: date-time, nullable: true }
+        resolved_at: { type: string, format: date-time, nullable: true }
+        closed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TicketComment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/User" }
+        body: { type: string }
+        is_internal: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TicketAttachment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        uploader: { $ref: "#/components/schemas/User" }
+        original_filename: { type: string }
+        mime_type: { type: string }
+        size_bytes: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, description: "Short class name, e.g. TicketAssignedNotification" }
+        data: { type: object, description: "Notification-specific payload — always includes at least `message`; ticket-related notifications also include `ticket_id`." }
+        read_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }

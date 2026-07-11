@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { LockIcon, MessageSquareIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -22,6 +23,7 @@ function initials(name: string): string {
 }
 
 export function TicketCommentThread({ ticketId }: { ticketId: string }) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const canPostInternal = useHasRole('Support Agent', 'Manager', 'Tenant Admin', 'Super Admin')
   const { data: comments, isLoading } = useTicketComments(ticketId)
@@ -45,7 +47,7 @@ export function TicketCommentThread({ ticketId }: { ticketId: string }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-medium">Comments</h2>
+      <h2 className="text-sm font-medium">{t('comments.title')}</h2>
 
       {isLoading && (
         <div className="space-y-3">
@@ -55,7 +57,7 @@ export function TicketCommentThread({ ticketId }: { ticketId: string }) {
       )}
 
       {!isLoading && comments?.length === 0 && (
-        <EmptyState icon={MessageSquareIcon} title="No comments yet" description="Be the first to reply." />
+        <EmptyState icon={MessageSquareIcon} title={t('comments.emptyTitle')} description={t('comments.emptyDescription')} />
       )}
 
       {!isLoading && comments && comments.length > 0 && (
@@ -73,13 +75,13 @@ export function TicketCommentThread({ ticketId }: { ticketId: string }) {
               </Avatar>
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium">{comment.author?.name ?? 'Unknown'}</span>
+                  <span className="font-medium">{comment.author?.name ?? t('common.unknown')}</span>
                   <span className="text-muted-foreground">
                     {new Date(comment.created_at).toLocaleString()}
                   </span>
                   {comment.is_internal && (
                     <span className="text-warning-foreground inline-flex items-center gap-1 text-xs font-medium">
-                      <LockIcon className="size-3" /> Internal note
+                      <LockIcon className="size-3" /> {t('comments.internalNote')}
                     </span>
                   )}
                 </div>
@@ -95,9 +97,9 @@ export function TicketCommentThread({ ticketId }: { ticketId: string }) {
           <Textarea
             value={body}
             onChange={(event) => setBody(event.target.value)}
-            placeholder="Write a reply…"
+            placeholder={t('comments.replyPlaceholder')}
             rows={3}
-            aria-label="Reply"
+            aria-label={t('comments.replyLabel')}
           />
           <div className="flex items-center justify-between">
             {canPostInternal ? (
@@ -108,13 +110,13 @@ export function TicketCommentThread({ ticketId }: { ticketId: string }) {
                   checked={isInternal}
                   onChange={(event) => setIsInternal(event.target.checked)}
                 />
-                Internal note (not visible to the client)
+                {t('comments.internalNoteCheckbox')}
               </label>
             ) : (
               <span />
             )}
             <Button type="submit" size="sm" disabled={isPending || !body.trim()}>
-              {isPending ? 'Posting…' : 'Post reply'}
+              {isPending ? t('comments.posting') : t('comments.postReply')}
             </Button>
           </div>
         </form>

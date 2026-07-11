@@ -1,6 +1,8 @@
 import axios, { AxiosError } from 'axios'
+import i18next from 'i18next'
 
 import { useAuthStore } from '@/stores/auth-store'
+import { useLocaleStore } from '@/stores/locale-store'
 import type { ApiErrorResponse } from '@/types/api'
 
 export const apiClient = axios.create({
@@ -15,6 +17,9 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  // Keeps validation/domain messages from the API in the user's selected UI
+  // language — matches the backend's SetLocale middleware negotiation.
+  config.headers['Accept-Language'] = useLocaleStore.getState().locale
   return config
 })
 
@@ -65,12 +70,12 @@ export function toApiError(error: unknown): ApiRequestError {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
     const data = error.response?.data
     return new ApiRequestError(
-      data?.message ?? error.message ?? 'An unexpected error occurred.',
+      data?.message ?? error.message ?? i18next.t('common.unexpectedError'),
       error.response?.status,
       data?.code ?? null,
       data?.errors ?? null,
     )
   }
 
-  return new ApiRequestError('An unexpected error occurred.', undefined, null, null)
+  return new ApiRequestError(i18next.t('common.unexpectedError'), undefined, null, null)
 }

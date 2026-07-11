@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import i18next from 'i18next'
 import { toast } from 'sonner'
 
 import { useAuth } from '@/hooks/use-auth'
@@ -33,7 +34,7 @@ export function useRealtimeNotifications() {
     const channelName = `tenant.${user.tenant_id}.user.${user.id}`
 
     echo.private(channelName).notification((notification: BroadcastNotificationPayload) => {
-      toast.info(notification.message ?? 'You have a new notification.')
+      toast.info(notification.message ?? i18next.t('notifications.newNotification'))
       queryClient.invalidateQueries({ queryKey: notificationKeys.all })
     })
 

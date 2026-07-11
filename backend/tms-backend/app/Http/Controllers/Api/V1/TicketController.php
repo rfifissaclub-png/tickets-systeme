@@ -43,7 +43,7 @@ class TicketController extends Controller
 
         return ApiResponse::success(
             data: new TicketResource($ticket->load(['ticketType', 'client', 'agent'])),
-            message: 'Ticket created.',
+            message: __('messages.tickets.created'),
             status: 201,
         );
     }
@@ -63,7 +63,7 @@ class TicketController extends Controller
 
         return ApiResponse::success(
             data: new TicketResource($ticket->load(['ticketType', 'client', 'agent'])),
-            message: 'Ticket updated.',
+            message: __('messages.tickets.updated'),
         );
     }
 
@@ -73,6 +73,6 @@ class TicketController extends Controller
 
         $ticket->delete();
 
-        return ApiResponse::success(message: 'Ticket deleted.');
+        return ApiResponse::success(message: __('messages.tickets.deleted'));
     }
 }

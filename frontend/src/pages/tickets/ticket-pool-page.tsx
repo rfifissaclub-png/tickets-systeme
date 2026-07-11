@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { InboxIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -12,20 +13,17 @@ import { toApiError } from '@/lib/api-client'
 import { usePullTicket, useTicketPool } from '@/hooks/use-ticket-pool'
 
 export function TicketPoolPage() {
+  const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const { data, isLoading, isError } = useTicketPool(page)
   const { mutate: pull, isPending, variables: pullingId } = usePullTicket()
 
   const onPull = (ticketId: string) => {
     pull(ticketId, {
-      onSuccess: () => toast.success('Ticket assigned to you.'),
+      onSuccess: () => toast.success(t('ticketPool.pulledToast')),
       onError: (error) => {
         const apiError = toApiError(error)
-        toast.error(
-          apiError.code === 'ticket_already_assigned'
-            ? 'Someone else claimed this ticket first.'
-            : apiError.message,
-        )
+        toast.error(apiError.code === 'ticket_already_assigned' ? t('ticketPool.alreadyAssignedToast') : apiError.message)
       },
     })
   }
@@ -33,10 +31,8 @@ export function TicketPoolPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Ticket pool</h1>
-        <p className="text-muted-foreground text-sm">
-          Unassigned tickets waiting to be claimed. Pulling a ticket assigns it to you immediately.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('ticketPool.title')}</h1>
+        <p className="text-muted-foreground text-sm">{t('ticketPool.subtitle')}</p>
       </div>
 
       {isLoading && (
@@ -48,11 +44,11 @@ export function TicketPoolPage() {
       )}
 
       {isError && (
-        <EmptyState icon={InboxIcon} title="Couldn't load the pool" description="Try refreshing the page." />
+        <EmptyState icon={InboxIcon} title={t('ticketPool.loadErrorTitle')} description={t('ticketPool.loadErrorDescription')} />
       )}
 
       {!isLoading && !isError && data && data.tickets.length === 0 && (
-        <EmptyState icon={InboxIcon} title="The pool is empty" description="No unassigned tickets right now." />
+        <EmptyState icon={InboxIcon} title={t('ticketPool.emptyTitle')} description={t('ticketPool.emptyDescription')} />
       )}
 
       {!isLoading && !isError && data && data.tickets.length > 0 && (
@@ -65,14 +61,14 @@ export function TicketPoolPage() {
                     {ticket.subject}
                   </Link>
                   <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
-                    <span>{ticket.client?.name ?? 'Unknown client'}</span>
+                    <span>{ticket.client?.name ?? t('ticketPool.unknownClient')}</span>
                     <span>·</span>
                     <span>{ticket.ticket_type?.name}</span>
                     <TicketPriorityBadge priority={ticket.priority} />
                   </div>
                 </div>
                 <Button size="sm" disabled={isPending && pullingId === ticket.id} onClick={() => onPull(ticket.id)}>
-                  {isPending && pullingId === ticket.id ? 'Claiming…' : 'Pull'}
+                  {isPending && pullingId === ticket.id ? t('ticketPool.claiming') : t('ticketPool.pull')}
                 </Button>
               </li>
             ))}

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { DownloadIcon, PaperclipIcon, TrashIcon, UploadIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -21,6 +22,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function TicketAttachmentList({ ticketId }: { ticketId: string }) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const isStaff = useHasRole('Support Agent', 'Manager', 'Tenant Admin', 'Super Admin')
   const { data: attachments, isLoading } = useTicketAttachments(ticketId)
@@ -36,7 +38,7 @@ export function TicketAttachmentList({ ticketId }: { ticketId: string }) {
 
     try {
       await upload({ file })
-      toast.success('File uploaded.')
+      toast.success(t('attachments.uploadedToast'))
     } catch (error) {
       toast.error(toApiError(error).message)
     }
@@ -57,7 +59,7 @@ export function TicketAttachmentList({ ticketId }: { ticketId: string }) {
   const onDelete = async (attachmentId: string) => {
     try {
       await remove(attachmentId)
-      toast.success('Attachment deleted.')
+      toast.success(t('attachments.deletedToast'))
     } catch (error) {
       toast.error(toApiError(error).message)
     }
@@ -66,10 +68,10 @@ export function TicketAttachmentList({ ticketId }: { ticketId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium">Attachments</h2>
+        <h2 className="text-sm font-medium">{t('attachments.title')}</h2>
         <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
           <UploadIcon className="size-4" />
-          {uploading ? 'Uploading…' : 'Upload file'}
+          {uploading ? t('attachments.uploading') : t('attachments.uploadFile')}
         </Button>
         <input ref={fileInputRef} type="file" className="hidden" onChange={onFileSelected} />
       </div>
@@ -77,7 +79,7 @@ export function TicketAttachmentList({ ticketId }: { ticketId: string }) {
       {isLoading && <Skeleton className="h-10 w-full" />}
 
       {!isLoading && attachments?.length === 0 && (
-        <EmptyState icon={PaperclipIcon} title="No attachments" className="p-6" />
+        <EmptyState icon={PaperclipIcon} title={t('attachments.emptyTitle')} className="p-6" />
       )}
 
       {!isLoading && attachments && attachments.length > 0 && (
@@ -87,21 +89,27 @@ export function TicketAttachmentList({ ticketId }: { ticketId: string }) {
               <div className="min-w-0">
                 <p className="truncate font-medium">{attachment.original_filename}</p>
                 <p className="text-muted-foreground text-xs">
-                  {formatBytes(attachment.size_bytes)} · uploaded by {attachment.uploader?.name ?? 'someone'}
+                  {formatBytes(attachment.size_bytes)} ·{' '}
+                  {t('attachments.uploadedBy', { name: attachment.uploader?.name ?? t('common.someone') })}
                 </p>
               </div>
               <div className="flex shrink-0 gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="Download"
+                  aria-label={t('attachments.download')}
                   disabled={downloadingId === attachment.id}
                   onClick={() => onDownload(attachment.id)}
                 >
                   <DownloadIcon className="size-4" />
                 </Button>
                 {(user?.id === attachment.uploader?.id || isStaff) && (
-                  <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => onDelete(attachment.id)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('attachments.delete')}
+                    onClick={() => onDelete(attachment.id)}
+                  >
                     <TrashIcon className="size-4" />
                   </Button>
                 )}

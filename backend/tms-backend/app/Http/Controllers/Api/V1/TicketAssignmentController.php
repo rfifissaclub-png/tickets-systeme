@@ -25,7 +25,7 @@ class TicketAssignmentController extends Controller
 
         return ApiResponse::success(
             data: new TicketResource($ticket->load(['ticketType', 'client', 'agent'])),
-            message: 'Ticket assigned.',
+            message: __('messages.tickets.assigned'),
         );
     }
 }

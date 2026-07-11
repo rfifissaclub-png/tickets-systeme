@@ -34,6 +34,6 @@ class ForgotPasswordController extends Controller
 
         // Always the same response whether or not the email/tenant matched
         // anything, so this endpoint can't be used to enumerate accounts.
-        return ApiResponse::success(message: 'If that account exists, a password reset link has been sent.');
+        return ApiResponse::success(message: __('messages.auth.password_reset_link_sent'));
     }
 }

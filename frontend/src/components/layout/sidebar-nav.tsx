@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router'
+import { useTranslation } from 'react-i18next'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
@@ -6,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { NAV_ITEMS } from './nav-config'
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
 
   const items = NAV_ITEMS.filter((item) => {
@@ -14,7 +16,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   })
 
   return (
-    <nav className="flex flex-col gap-1 p-2" aria-label="Primary">
+    <nav className="flex flex-col gap-1 p-2" aria-label={t('nav.primary')}>
       {items.map((item) => (
         <NavLink
           key={item.to}
@@ -31,7 +33,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           }
         >
           <item.icon className="size-4" aria-hidden="true" />
-          {item.label}
+          {t(item.labelKey)}
         </NavLink>
       ))}
     </nav>

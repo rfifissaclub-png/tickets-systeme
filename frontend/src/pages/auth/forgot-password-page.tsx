@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { useMutation } from '@tanstack/react-query'
 import { Link } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { forgotPassword } from '@/api/auth'
@@ -13,16 +14,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-const schema = z.object({
-  tenant: z.string().trim().optional(),
-  email: z.string().trim().email('Enter a valid email address.'),
-})
+function useForgotPasswordSchema() {
+  const { t } = useTranslation()
+  return z.object({
+    tenant: z.string().trim().optional(),
+    email: z.string().trim().email(t('auth.invalidEmail')),
+  })
+}
 
-type FormValues = z.infer<typeof schema>
+type FormValues = z.infer<ReturnType<typeof useForgotPasswordSchema>>
 
 export function ForgotPasswordPage() {
+  const { t } = useTranslation()
   const [message, setMessage] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const schema = useForgotPasswordSchema()
 
   const {
     register,
@@ -46,8 +52,8 @@ export function ForgotPasswordPage() {
     <div className="flex min-h-svh items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Forgot your password?</CardTitle>
-          <CardDescription>We&apos;ll email you a reset link if an account matches.</CardDescription>
+          <CardTitle className="text-xl">{t('auth.forgotTitle')}</CardTitle>
+          <CardDescription>{t('auth.forgotDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {message ? (
@@ -62,16 +68,16 @@ export function ForgotPasswordPage() {
                 </Alert>
               )}
               <div className="space-y-2">
-                <Label htmlFor="tenant">Workspace</Label>
+                <Label htmlFor="tenant">{t('auth.workspace')}</Label>
                 <Input
                   id="tenant"
-                  placeholder="acme (leave blank for platform admin)"
+                  placeholder={t('auth.workspacePlaceholder')}
                   autoComplete="organization"
                   {...register('tenant')}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('auth.email')}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -82,13 +88,13 @@ export function ForgotPasswordPage() {
                 {errors.email && <p className="text-destructive text-sm">{errors.email.message}</p>}
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Sending…' : 'Send reset link'}
+                {isSubmitting ? t('auth.sending') : t('auth.sendResetLink')}
               </Button>
             </form>
           )}
           <p className="text-muted-foreground text-center text-sm">
             <Link to="/login" className="hover:underline">
-              Back to sign in
+              {t('auth.backToSignIn')}
             </Link>
           </p>
         </CardContent>

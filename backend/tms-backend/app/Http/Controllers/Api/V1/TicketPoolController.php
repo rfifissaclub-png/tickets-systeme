@@ -45,7 +45,7 @@ class TicketPoolController extends Controller
 
         return ApiResponse::success(
             data: new TicketResource($assigned->load(['ticketType', 'client', 'agent'])),
-            message: 'Ticket assigned to you.',
+            message: __('messages.tickets.pulled'),
         );
     }
 }

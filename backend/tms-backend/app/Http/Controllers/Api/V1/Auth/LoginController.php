@@ -28,7 +28,7 @@ class LoginController extends Controller
             // Same message either way: don't let the response distinguish
             // "no such user" from "wrong password" (account enumeration).
             throw ValidationException::withMessages([
-                'email' => ['These credentials do not match our records.'],
+                'email' => [__('messages.auth.credentials_invalid')],
             ]);
         }
 
@@ -51,7 +51,7 @@ class LoginController extends Controller
                 'token' => $token->plainTextToken,
                 'expires_at' => $expiresAt,
             ],
-            message: 'Logged in successfully.',
+            message: __('messages.auth.login_success'),
         );
     }
 }

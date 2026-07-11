@@ -228,12 +228,64 @@ reviewable increment.
       WebSocket handshake, channel auth, and a live broadcast round-trip only exist as reviewed code
       right now, never executed once, against a backend that itself has never run either.
 
-## Phase 7 — i18n, CI/CD hardening, documentation
+## Phase 7 — i18n, CI/CD hardening, documentation (done, pending live verification)
 
-- [ ] English + French locales, architecture allows unlimited languages.
-- [ ] Full GitHub Actions pipeline (backend + frontend + deploy).
-- [ ] Nginx hardening, security headers/CSP verification.
-- [ ] Architecture docs, ER diagram, generated API docs, deployment guide.
+- [x] Backend i18n: `lang/en/*` + `lang/fr/*` (validation, passwords, auth, and a custom `messages`
+      file for every domain string), `SetLocale` middleware negotiating `Accept-Language` (quality-
+      ordered, falls back to `en`), every controller/exception/central handler message routed through
+      `__()` — no hardcoded English string left in any API response. `ResetPassword`'s constant-keyed
+      status strings (`Password::INVALID_USER` etc.) map directly to `lang/*/passwords.php` keys, so
+      `__($status)` works without a translation table in application code.
+- [x] Frontend i18n: `react-i18next`, `src/i18n/locales/{en,fr}.json` (182 keys, full parity verified
+      programmatically), a Zustand-persisted `locale-store` (mirrors the existing `theme-store`
+      pattern) driving both `t()` calls and an `Accept-Language` header attached to every API request
+      (`api-client.ts`) — so the backend's Phase-7 locale negotiation actually gets used, not just the
+      UI shell. `LanguageToggle` in the app header, mirroring `ThemeToggle`. Every page/component from
+      Phases 6.1–6.3 re-translated; a from-source key-usage scan confirms every `t()` call resolves to
+      a real key in both locale files.
+- [x] Architecture allows unlimited languages: adding a third locale is "add `lang/xx/*.php` +
+      `locales/xx.json` + one line in `SetLocale`'s and `i18n/index.ts`'s supported-locale lists" —
+      no code path is hardcoded to exactly two.
+- [x] CI/CD: `.github/workflows/frontend-ci.yml` (typecheck, lint, production build), added alongside
+      the existing `backend-ci.yml`. `.github/workflows/docker-build.yml` builds both production
+      Dockerfiles on every push/PR (validates them without pushing) and publishes to GHCR on `main`
+      using the built-in `GITHUB_TOKEN` — no registry secrets to configure.
+- [x] New `infra/docker/frontend/Dockerfile` (multi-stage: Node build → nginx serve) and
+      `frontend.conf.template` — previously the frontend had no production Docker image at all, only
+      `npm run dev`. Added a `frontend` service to `infra/docker-compose.yml` so the production image
+      path is exercised locally too, not just in CI.
+- [x] Nginx hardening: split the shared `security-headers.conf` so backend and frontend each own their
+      own `Content-Security-Policy` (they were about to collide — the frontend's new CSP would have
+      been sent as a second header alongside the backend's `default-src 'none'`, which browsers
+      resolve by intersection, silently breaking the SPA). Added `server_tokens off`,
+      `limit_req_status 429`. Frontend CSP's `connect-src` is templated per-deployment via nginx's
+      built-in `envsubst`-over-templates entrypoint feature (`API_ORIGIN`/`WS_ORIGIN`), not hardcoded.
+      All three nginx configs (`tms.conf`, `frontend.conf.template`, plus the shared headers file)
+      syntax-checked with a real local `nginx -t`, not just eyeballed.
+- [x] PHP production-image hardening: `opcache.validate_timestamps` now `0` in the production target
+      only (`opcache-production.ini`, loaded after the dev default via conf.d filename ordering) —
+      previously the same dev-friendly (and slower) setting shipped in the production image too. Added
+      `infra/docker/php/entrypoint.sh` to actually run the `config:cache`/`route:cache`/`event:cache`
+      step the Phase-1–6 Dockerfile comments had flagged as deferred to this phase.
+- [x] Documentation: `docs/architecture.md` (system overview, tenancy/RLS mechanics, auth/RBAC, ticket
+      workflow, notifications/realtime, attachments, audit, i18n, reporting), `docs/er-diagram.md` (a
+      Mermaid ER diagram — rendered end-to-end with a real headless-Chromium `mmdc` run to confirm the
+      syntax is actually valid, not just eyeballed), `docs/openapi.yaml` (hand-maintained OpenAPI 3.0
+      spec covering all 26 route paths/32 operations — deliberately not L5-Swagger-annotation-
+      generated, since annotating every controller under time pressure risked silent drift between
+      "annotated" and "actual" endpoints; a hand-written spec checked against the real routes/
+      FormRequests/API Resources was judged more trustworthy — validated with a real `@redocly/cli
+      lint` pass, 0 errors), `docs/deployment.md` (env var reference, release/config-caching process,
+      TLS/reverse-proxy expectations, CI/CD summary, and an explicitly documented known limitation:
+      Vite bakes `VITE_*` vars at image build time, so the one GHCR frontend image published by CI is
+      only valid for the origin it was built against — a real multi-environment deploy needs either a
+      rebuild per environment or a future runtime-`env.js` mechanism, not built now since a single
+      environment doesn't need it yet).
+- [ ] **Live verification blocked** — same Docker/browser gap as every prior phase. Everything above
+      was checked as deeply as static tooling allows (full list in the Phase 7 commit message) but
+      none of it has run against a live stack: the locale-switching UI has never been clicked, the
+      Docker images have never actually been built (no Docker daemon access here, only Dockerfile/
+      compose-YAML static review), and the GHCR publish step has never executed.
 
 ## Future roadmap (post-MVP, architecture should not block these)
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { TicketForm, type TicketFormValues } from '@/components/tickets/ticket-form'
@@ -8,6 +9,7 @@ import { toApiError } from '@/lib/api-client'
 import { useCreateTicket } from '@/hooks/use-tickets'
 
 export function TicketCreatePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { mutateAsync } = useCreateTicket()
   const [formError, setFormError] = useState<string | null>(null)
@@ -16,7 +18,7 @@ export function TicketCreatePage() {
     setFormError(null)
     try {
       const ticket = await mutateAsync(values)
-      toast.success('Ticket created.')
+      toast.success(t('tickets.create.createdToast'))
       navigate(`/tickets/${ticket.id}`)
     } catch (error) {
       setFormError(toApiError(error).message)
@@ -26,17 +28,22 @@ export function TicketCreatePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">New ticket</h1>
-        <p className="text-muted-foreground text-sm">Describe the issue and we&apos;ll route it to the right team.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('tickets.create.title')}</h1>
+        <p className="text-muted-foreground text-sm">{t('tickets.create.subtitle')}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Ticket details</CardTitle>
-          <CardDescription>Fields marked required must be filled in before submitting.</CardDescription>
+          <CardTitle>{t('tickets.create.cardTitle')}</CardTitle>
+          <CardDescription>{t('tickets.create.cardDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <TicketForm onSubmit={onSubmit} submitLabel="Create ticket" formError={formError} onCancel={() => navigate(-1)} />
+          <TicketForm
+            onSubmit={onSubmit}
+            submitLabel={t('tickets.create.submit')}
+            formError={formError}
+            onCancel={() => navigate(-1)}
+          />
         </CardContent>
       </Card>
     </div>

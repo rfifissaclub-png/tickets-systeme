@@ -44,6 +44,6 @@ class NotificationController extends Controller
     {
         $request->user()->unreadNotifications->each->markAsRead();
 
-        return ApiResponse::success(message: 'All notifications marked as read.');
+        return ApiResponse::success(message: __('messages.notifications.all_marked_read'));
     }
 }

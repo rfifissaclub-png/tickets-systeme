@@ -10,9 +10,7 @@ class TicketIsReadOnlyException extends RuntimeException
     public function __construct(public readonly TicketStatus $status)
     {
         parent::__construct(
-            $status === TicketStatus::Closed
-                ? 'Closed tickets cannot be modified.'
-                : 'Resolved tickets are read-only; change the status to reopen before editing.'
+            __($status === TicketStatus::Closed ? 'messages.tickets.read_only_closed' : 'messages.tickets.read_only_resolved')
         );
     }
 }

@@ -31,7 +31,7 @@ class TicketTypeController extends Controller
             ...$request->validated(),
         ]);
 
-        return ApiResponse::success(new TicketTypeResource($ticketType), 'Ticket type created.', 201);
+        return ApiResponse::success(new TicketTypeResource($ticketType), __('messages.ticket_types.created'), 201);
     }
 
     public function update(UpdateTicketTypeRequest $request, TicketType $ticketType): JsonResponse
@@ -40,7 +40,7 @@ class TicketTypeController extends Controller
 
         $ticketType->fill($request->validated())->save();
 
-        return ApiResponse::success(new TicketTypeResource($ticketType), 'Ticket type updated.');
+        return ApiResponse::success(new TicketTypeResource($ticketType), __('messages.ticket_types.updated'));
     }
 
     public function destroy(TicketType $ticketType): JsonResponse
@@ -49,6 +49,6 @@ class TicketTypeController extends Controller
 
         $ticketType->delete();
 
-        return ApiResponse::success(message: 'Ticket type deleted.');
+        return ApiResponse::success(message: __('messages.ticket_types.deleted'));
     }
 }
