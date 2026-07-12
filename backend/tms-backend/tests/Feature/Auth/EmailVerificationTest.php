@@ -5,6 +5,37 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 
+// Notification::fake() (used elsewhere in this file) intercepts before
+// toMail() ever runs, so it can't catch a bug in URL generation itself —
+// same reasoning as PasswordResetTest's equivalent test. This renders the
+// real mail message to prove AppServiceProvider::boot()'s
+// VerifyEmail::createUrlUsing() override actually points at the frontend,
+// not the raw API endpoint (which would show the user bare JSON).
+it('builds a frontend-facing verification URL carrying the same id/hash/expires/signature the API validates', function () {
+    [$tenant, $user] = createTenantWithUser(['email_verified_at' => null]);
+    app(TenantContext::class)->set($tenant->id);
+
+    $mail = (new VerifyEmail)->toMail($user);
+
+    expect($mail->actionUrl)
+        ->toStartWith(rtrim(config('app.frontend_url'), '/').'/verify-email?')
+        ->toContain('id='.$user->id)
+        ->toContain('hash='.sha1($user->getEmailForVerification()))
+        ->toContain('expires=')
+        ->toContain('signature=');
+
+    // The frontend page's whole job is to replay these four query params
+    // against the real API endpoint (see src/api/auth.ts's verifyEmail) —
+    // prove that round-trip actually succeeds, not just that the URL looks
+    // right.
+    parse_str((string) parse_url($mail->actionUrl, PHP_URL_QUERY), $query);
+
+    $this->getJson("/api/v1/auth/email/verify/{$query['id']}/{$query['hash']}?expires={$query['expires']}&signature={$query['signature']}")
+        ->assertOk();
+
+    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
+});
+
 it('verifies the email via a valid signed link', function () {
     [$tenant, $user] = createTenantWithUser(['email_verified_at' => null]);
     app(TenantContext::class)->set($tenant->id);

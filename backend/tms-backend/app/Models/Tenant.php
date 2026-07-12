@@ -16,6 +16,19 @@ class Tenant extends Model
     /** @use HasFactory<TenantFactory> */
     use Auditable, HasFactory, HasUuids, SoftDeletes;
 
+    /**
+     * The cahier des charges' "Corporation Principale": a centralized,
+     * always-present tenant for clients not affiliated with any specific
+     * business entity, or needing global assistance. Ordinary tenant in
+     * every technical respect (RLS, RBAC, tickets all work identically) —
+     * only its well-known slug is special, so callers that need to route
+     * an unaffiliated client somewhere have a stable id to look up rather
+     * than a magic string scattered across the codebase. Seeded
+     * unconditionally by DatabaseSeeder (including in production), the
+     * same way RoleAndPermissionSeeder always runs.
+     */
+    public const string MAIN_CORPORATION_SLUG = 'main-corporation';
+
     protected $fillable = [
         'name',
         'slug',

@@ -14,8 +14,15 @@ const badgeVariants = cva(
         destructive:
           'border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         outline: 'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
-        success: 'border-transparent bg-success/15 text-success-foreground',
-        warning: 'border-transparent bg-warning/15 text-warning-foreground',
+        // text-success-foreground/text-warning-foreground are near-white,
+        // designed for the *solid* bg-success/bg-warning fill — paired with
+        // the low-opacity /15 tint here instead, that's near-white text on
+        // a near-white background. text-foreground (the normal dark ink)
+        // is what Alert's own success/warning variants already use against
+        // this same kind of tinted background — match that, not the
+        // solid-fill token.
+        success: 'border-success/20 bg-success/15 text-foreground',
+        warning: 'border-warning/20 bg-warning/15 text-foreground',
       },
     },
     defaultVariants: {

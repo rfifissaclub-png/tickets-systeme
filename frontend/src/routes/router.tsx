@@ -4,6 +4,7 @@ import { AppShell } from '@/components/layout/app-shell'
 import { ForgotPasswordPage } from '@/pages/auth/forgot-password-page'
 import { LoginPage } from '@/pages/auth/login-page'
 import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
+import { VerifyEmailPage } from '@/pages/auth/verify-email-page'
 import { DashboardPage } from '@/pages/dashboard/dashboard-page'
 import { ReportsPage } from '@/pages/reports/reports-page'
 import { TenantsPage } from '@/pages/tenants/tenants-page'
@@ -18,6 +19,12 @@ import { GuestRoute } from './guest-route'
 import { ProtectedRoute } from './protected-route'
 
 export const router = createBrowserRouter([
+  // Not under GuestRoute or ProtectedRoute: a verification link can be
+  // clicked whether or not the browser happens to still be logged in
+  // (e.g. clicked from a saved email long after signing in elsewhere), and
+  // it's a read-only, idempotent confirmation with nothing sensitive to
+  // hide from either state.
+  { path: '/verify-email', element: <VerifyEmailPage /> },
   {
     element: <GuestRoute />,
     children: [

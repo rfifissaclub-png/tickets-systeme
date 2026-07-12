@@ -67,6 +67,8 @@
     "resetting": "Resetting…",
     "passwordMinLength": "Password must be at least 8 characters.",
     "passwordsDontMatch": "Passwords don't match.",
+    "verifyEmailTitle": "Email verification",
+    "invalidVerificationLinkDescription": "This verification link is missing required information.",
     "accountMenu": "Account menu",
     "logOut": "Log out",
     "logoutFailed": "Logout request failed, but you have been signed out locally."

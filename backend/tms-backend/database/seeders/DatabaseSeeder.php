@@ -19,11 +19,34 @@ class DatabaseSeeder extends Seeder
         // Roles/permissions are needed in every environment, including production.
         $this->call(RoleAndPermissionSeeder::class);
 
+        $this->seedMainCorporation();
+
         if (app()->isProduction()) {
             return;
         }
 
         $this->seedLocalDevAccounts();
+    }
+
+    /**
+     * The cahier des charges' "Corporation Principale" — see
+     * Tenant::MAIN_CORPORATION_SLUG. Seeded in every environment, including
+     * production, the same way roles/permissions are: this is a structural
+     * part of the tenancy model (every client belongs to a specific entity
+     * *or* this one), not local-dev-only demo data. firstOrCreate rather
+     * than create: re-running seeders against an already-seeded database
+     * (a common deploy-step pattern) must not throw on the slug's unique
+     * constraint.
+     */
+    private function seedMainCorporation(): void
+    {
+        app(TenantContext::class)->bypass(
+            'seed: main corporation tenant',
+            fn () => Tenant::query()->firstOrCreate(
+                ['slug' => Tenant::MAIN_CORPORATION_SLUG],
+                ['name' => 'Main Corporation'],
+            ),
+        );
     }
 
     /**

@@ -74,16 +74,28 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureRateLimiting();
 
-        // The default VerifyEmail notification points at a route literally
-        // named "verification.verify". Our routes live under the api.v1.*
-        // prefix, so the name is "api.v1.auth.verification.verify" instead —
-        // point the notification at the real route rather than renaming it.
+        // The signed URL below is what actually gets validated (the
+        // `signed` middleware on VerifyEmailController checks its
+        // expires/signature query params against id+hash) — but emailing
+        // that raw API URL directly means clicking it shows the user bare
+        // JSON instead of a page. Same fix as ResetPassword::createUrlUsing
+        // below: point the email at a frontend page, carrying the same
+        // id/hash/expires/signature as query params, and let the frontend
+        // replay them against this exact endpoint via fetch instead of the
+        // user's browser navigating straight into the API.
         VerifyEmail::createUrlUsing(function (User $notifiable) {
-            return URL::temporarySignedRoute(
+            $id = $notifiable->getKey();
+            $hash = sha1($notifiable->getEmailForVerification());
+
+            $signedUrl = URL::temporarySignedRoute(
                 'api.v1.auth.verification.verify',
                 now()->addMinutes(60),
-                ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())],
+                ['id' => $id, 'hash' => $hash],
             );
+
+            $query = (string) parse_url($signedUrl, PHP_URL_QUERY);
+
+            return rtrim(config('app.frontend_url'), '/')."/verify-email?id={$id}&hash={$hash}&{$query}";
         });
 
         // Without this, ResetPassword's default resetUrl() calls

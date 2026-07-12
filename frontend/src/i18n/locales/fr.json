@@ -67,6 +67,8 @@
     "resetting": "Réinitialisation…",
     "passwordMinLength": "Le mot de passe doit contenir au moins 8 caractères.",
     "passwordsDontMatch": "Les mots de passe ne correspondent pas.",
+    "verifyEmailTitle": "Vérification de l'e-mail",
+    "invalidVerificationLinkDescription": "Ce lien de vérification manque d'informations requises.",
     "accountMenu": "Menu du compte",
     "logOut": "Déconnexion",
     "logoutFailed": "La déconnexion a échoué côté serveur, mais vous avez été déconnecté localement."

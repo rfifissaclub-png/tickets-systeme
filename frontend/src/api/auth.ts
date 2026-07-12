@@ -46,3 +46,24 @@ export async function fetchMe(): Promise<User> {
   const { data } = await apiClient.get<ApiSuccessResponse<User>>('/me')
   return data.data
 }
+
+export interface VerifyEmailPayload {
+  id: string
+  hash: string
+  expires: string
+  signature: string
+}
+
+/**
+ * Replays the exact id/hash/expires/signature the backend's signed link
+ * carried — the `signed` middleware validates the request's URL against
+ * that signature server-side, so all four must be forwarded unchanged (see
+ * AppServiceProvider::boot()'s VerifyEmail::createUrlUsing()).
+ */
+export async function verifyEmail(payload: VerifyEmailPayload): Promise<string> {
+  const { id, hash, ...query } = payload
+  const { data } = await apiClient.get<ApiSuccessResponse<null>>(`/auth/email/verify/${id}/${hash}`, {
+    params: query,
+  })
+  return data.message ?? 'Email verified successfully.'
+}
