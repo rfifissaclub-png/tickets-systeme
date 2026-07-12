@@ -105,8 +105,8 @@ same across any tenant, plus provision new tenants outright.
   `TenantContext::bypass()` call — but only when the actor actually *is* a
   Super Admin. Every service method takes the acting `User` and checks this
   per-call; bypassing unconditionally would silently defeat the RLS
-  confinement a Tenant Admin's permission checks rely on (a real bug caught
-  and fixed during Phase 8 — see `TenantManagementService`'s own docblock).
+  confinement a Tenant Admin's permission checks rely on — see
+  `TenantManagementService`'s own docblock.
 - **Role assignment is a separate, narrower permission from general user
   edits** (`users.manageRoles` vs. `users.update`) — granting someone the
   ability to fix a colleague's typo'd name shouldn't also grant them the

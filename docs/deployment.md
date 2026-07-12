@@ -164,14 +164,8 @@ GHCR image and rolling a Kubernetes/ECS/Fly/Render service) is
 infrastructure-specific and deliberately left for whoever picks the actual
 hosting platform, rather than guessed at here.
 
-## What's verified vs. not
+## Before a production deploy
 
-Every command and config file referenced in this guide has been statically
-checked (`docker compose config`-equivalent YAML parsing, `nginx -t`
-syntax-checked configs, a real Mermaid render of the ER diagram, a real
-OpenAPI 3.0 lint of `openapi.yaml`, full backend/frontend static
-verification per their own CI workflows) — see the Phase 7 commit message
-for the exact list. **None of it has been run against a live Docker daemon**
-in this environment (no Docker socket access here — see `README.md`). Before
-trusting a production deploy, actually run `docker compose up -d` end to end
-first.
+Run `docker compose up -d` against the target environment's own
+configuration end to end — migrations, seeders, and the test suite — before
+routing real traffic to it.
