@@ -25,7 +25,8 @@ class StoreTicketAttachmentRequest extends ApiFormRequest
             'file' => [
                 'required',
                 'file',
-                'max:'.FileUploadService::MAX_SIZE_KB,
+                // Ops-configurable (ATTACHMENTS_MAX_SIZE_KB) — see config/attachments.php.
+                'max:'.config('attachments.max_size_kb'),
                 // Checked against the real file content (fileinfo), not
                 // just the client-supplied extension or Content-Type header.
                 'mimetypes:'.implode(',', FileUploadService::ALLOWED_MIME_TYPES),

@@ -42,7 +42,11 @@ it('only shows a skill-gated agent pool tickets matching their qualified ticket 
     $agent->assignRole(RoleName::SupportAgent->value);
     $agent->refresh();
 
-    $otherType = TicketType::factory()->for($tenant)->create();
+    // A name outside TicketTypeFactory's 5-word random pool: $ticketType
+    // above got an unpinned random name from that same pool, and a
+    // same-tenant collision would trip the ticket_types (tenant_id, name)
+    // unique constraint — see the factory's own docblock on this.
+    $otherType = TicketType::factory()->for($tenant)->create(['name' => 'Distinct Other Type']);
     $unqualifiedTicket = Ticket::factory()->for($tenant)->create([
         'ticket_type_id' => $otherType->id,
         'client_id' => $client->id,

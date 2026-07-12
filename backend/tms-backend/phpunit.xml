@@ -37,6 +37,15 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!--
+            Pinned off: the real .env points ATTACHMENTS_AV_HOST at "clamav",
+            a Docker-internal hostname that doesn't resolve outside the
+            compose network. Individual tests that need scanning behavior
+            bind a fake VirusScanner directly (see
+            TicketAttachmentAntivirusTest) rather than depending on a real
+            clamd being reachable from wherever tests happen to run.
+        -->
+        <env name="ATTACHMENTS_AV_ENABLED" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

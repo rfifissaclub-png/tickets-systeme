@@ -2,10 +2,14 @@
 
 namespace App\Services\Attachments;
 
+use App\Contracts\VirusScanner;
+use App\Exceptions\FileInfectedException;
+use App\Exceptions\VirusScanUnavailableException;
 use App\Models\Ticket;
 use App\Models\TicketAttachment;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -13,8 +17,8 @@ use Illuminate\Support\Str;
  * Actual MIME-type/size validation happens in StoreTicketAttachmentRequest
  * (Laravel's `mimetypes:`/`max:` rules, checked against real file content
  * via fileinfo — not just the client-supplied extension/header) — this
- * service assumes it's already been validated and focuses purely on storing
- * the file safely.
+ * service assumes it's already been validated and focuses on scanning and
+ * storing the file safely.
  */
 class FileUploadService
 {
@@ -30,12 +34,20 @@ class FileUploadService
         'application/zip',
     ];
 
-    public const MAX_SIZE_KB = 25 * 1024;
-
     private const DISK = 's3';
 
+    public function __construct(private readonly VirusScanner $scanner) {}
+
+    /**
+     * @throws FileInfectedException if the scanner positively identifies malware
+     * @throws VirusScanUnavailableException if scanning is enabled, the
+     *         scanner couldn't be reached/errored, and
+     *         config('attachments.antivirus.fail_closed') is true
+     */
     public function store(UploadedFile $file, Ticket $ticket, User $uploader): TicketAttachment
     {
+        $this->scan($file);
+
         $extension = $file->guessExtension() ?? 'bin';
 
         // Never derive the storage path from the client-supplied filename —
@@ -78,6 +90,28 @@ class FileUploadService
     {
         Storage::disk($attachment->disk)->delete($attachment->stored_path);
         $attachment->delete();
+    }
+
+    /**
+     * Scans the file's real (temp) path before it's ever written to
+     * permanent storage — an infected file is never persisted, not
+     * persisted-then-removed.
+     */
+    private function scan(UploadedFile $file): void
+    {
+        try {
+            if ($this->scanner->isInfected($file->getRealPath())) {
+                throw new FileInfectedException;
+            }
+        } catch (VirusScanUnavailableException $e) {
+            if (config('attachments.antivirus.fail_closed')) {
+                throw $e;
+            }
+
+            Log::warning('Virus scan unavailable; allowing upload through (fail_closed=false).', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

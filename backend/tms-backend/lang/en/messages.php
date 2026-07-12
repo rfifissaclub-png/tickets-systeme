@@ -57,6 +57,8 @@ return [
     'attachments' => [
         'uploaded' => 'File uploaded.',
         'deleted' => 'Attachment deleted.',
+        'infected' => 'This file was rejected because it appears to contain malware.',
+        'scan_unavailable' => 'File could not be scanned for viruses right now. Please try again shortly.',
     ],
 
     'notifications' => [

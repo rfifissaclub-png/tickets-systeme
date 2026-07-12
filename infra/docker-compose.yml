@@ -69,6 +69,25 @@ services:
       - "8025:8025"
       - "1025:1025"
 
+  # Scans every attachment upload before it's persisted — see
+  # App\Services\Attachments\ClamAvScanner and config/attachments.php.
+  # The official image runs freshclam once on boot to fetch signatures
+  # before clamd starts, which is why its healthcheck (and therefore
+  # backend/queue's startup) takes a couple of minutes on a cold volume.
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    volumes:
+      - clamav_data:/var/lib/clamav
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+
   backend:
     build:
       context: ..
@@ -82,6 +101,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      clamav:
         condition: service_healthy
 
   queue:
@@ -98,6 +119,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      clamav:
         condition: service_healthy
 
   reverb:
@@ -160,3 +183,4 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  clamav_data:

@@ -57,6 +57,8 @@ return [
     'attachments' => [
         'uploaded' => 'Fichier téléversé.',
         'deleted' => 'Pièce jointe supprimée.',
+        'infected' => 'Ce fichier a été rejeté car il semble contenir un logiciel malveillant.',
+        'scan_unavailable' => "Le fichier n'a pas pu être analysé pour le moment. Veuillez réessayer sous peu.",
     ],
 
     'notifications' => [

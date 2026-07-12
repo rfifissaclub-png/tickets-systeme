@@ -1,9 +1,11 @@
 <?php
 
+use App\Exceptions\FileInfectedException;
 use App\Exceptions\InvalidTicketTransitionException;
 use App\Exceptions\TicketAlreadyAssignedException;
 use App\Exceptions\TicketIsReadOnlyException;
 use App\Exceptions\TicketNotQualifiedException;
+use App\Exceptions\VirusScanUnavailableException;
 use App\Http\Middleware\PrimeSanctumAuthentication;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SetLocale;
@@ -145,6 +147,25 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return ApiResponse::error(message: $e->getMessage(), status: 422, code: 'invalid_ticket_transition');
+        });
+
+        $exceptions->render(function (FileInfectedException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return ApiResponse::error(message: $e->getMessage(), status: 422, code: 'file_infected');
+        });
+
+        // 503, not 500: this is the antivirus scanner being unreachable, not
+        // an application bug — a client (or ops, via monitoring) should be
+        // able to tell "try again shortly" apart from "something broke".
+        $exceptions->render(function (VirusScanUnavailableException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return ApiResponse::error(message: __('messages.attachments.scan_unavailable'), status: 503, code: 'virus_scan_unavailable');
         });
 
         $exceptions->render(function (ModelNotFoundException $e, Request $request) {

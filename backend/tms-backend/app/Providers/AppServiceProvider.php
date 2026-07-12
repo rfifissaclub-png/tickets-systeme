@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Contracts\VirusScanner;
 use App\Enums\RoleName;
 use App\Listeners\LogRoleOrPermissionChange;
 use App\Listeners\LogSuccessfulLogin;
 use App\Listeners\LogSuccessfulLogout;
 use App\Models\User;
+use App\Services\Attachments\ClamAvScanner;
+use App\Services\Attachments\NullVirusScanner;
 use App\Services\Tenancy\TenantContext;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -33,6 +36,22 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantContext::class);
+
+        // Which implementation callers get is decided here, once, from
+        // config — FileUploadService always calls the interface and never
+        // branches on whether antivirus is turned on. See
+        // config/attachments.php for why this defaults to off.
+        $this->app->singleton(VirusScanner::class, function () {
+            if (! config('attachments.antivirus.enabled')) {
+                return new NullVirusScanner;
+            }
+
+            return new ClamAvScanner(
+                config('attachments.antivirus.host'),
+                config('attachments.antivirus.port'),
+                config('attachments.antivirus.timeout'),
+            );
+        });
     }
 
     /**

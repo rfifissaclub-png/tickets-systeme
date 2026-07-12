@@ -56,7 +56,11 @@ it('filters by comma-separated status and by ticket type', function () {
     app(TenantContext::class)->set($tenant->id);
     $client->assignRole(RoleName::Client->value);
 
-    $otherType = TicketType::factory()->for($tenant)->create(['name' => 'Billing']);
+    // A name outside TicketTypeFactory's 5-word random pool: $ticketType
+    // above got an unpinned random name from that same pool, and a
+    // same-tenant collision would trip the ticket_types (tenant_id, name)
+    // unique constraint — see the factory's own docblock on this.
+    $otherType = TicketType::factory()->for($tenant)->create(['name' => 'Distinct Other Type']);
 
     $pending = Ticket::factory()->for($tenant)->create([
         'ticket_type_id' => $ticketType->id,
