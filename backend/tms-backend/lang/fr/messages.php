@@ -41,6 +41,7 @@ return [
         'created' => 'Entité créée.',
         'updated' => 'Entité mise à jour.',
         'deleted' => 'Entité suspendue.',
+        'client_email_conflict' => "Impossible de suspendre cette entité : Main Corporation a déjà un client avec le même email que :emails. Résolvez le conflit avant de suspendre.",
     ],
 
     'users' => [
@@ -52,6 +53,13 @@ return [
         'only_super_admin_grants_super_admin' => 'Seul un Super Admin peut accorder le rôle Super Admin.',
         'super_admin_role_requires_no_tenant' => "Le rôle Super Admin ne peut être accordé qu'à un compte de niveau plateforme, sans espace de travail.",
         'skills_must_match_tenant' => "Un ou plusieurs types de tickets n'appartiennent pas à l'espace de travail de cet utilisateur.",
+        'welcome_email_subject' => 'Votre compte TMS a été créé',
+        'welcome_email_intro' => 'Un administrateur a créé un compte pour vous sur TMS.',
+        'welcome_email_workspace' => 'Espace de travail : :workspace',
+        'welcome_email_login' => 'Email : :email',
+        'welcome_email_password' => 'Mot de passe : :password',
+        'welcome_email_change_password' => 'Pour votre sécurité, veuillez vous connecter et changer ce mot de passe dès que possible.',
+        'welcome_email_action' => 'Se connecter',
     ],
 
     'attachments' => [

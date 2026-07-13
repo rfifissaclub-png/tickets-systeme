@@ -3,10 +3,13 @@
 namespace App\Services\Tenancy;
 
 use App\Enums\RoleName;
+use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * paginate()/create()/delete() are only ever reachable by a Super Admin
@@ -82,7 +85,80 @@ class TenantManagementService
     public function delete(Tenant $tenant): void
     {
         $this->tenantContext->bypass('tenant suspension (soft delete)', function () use ($tenant) {
+            $this->reassignClientsToMainCorporation($tenant);
+
             $tenant->delete();
         });
+    }
+
+    /**
+     * Suspending a tenant permanently locks out its staff (Tenant
+     * Admin/Manager/Support Agent) — there is no other entity for those
+     * roles to mean anything under, so they're deliberately left as-is
+     * (login already fails for them once the tenant is soft-deleted, since
+     * the login lookup only ever queries non-trashed tenants).
+     *
+     * Clients are different: Main Corporation exists precisely to hold
+     * clients not tied to a specific business entity, so a deleted
+     * tenant's clients are moved there instead of being locked out, and
+     * can keep signing in and filing new tickets. Their *historical*
+     * tickets are deliberately left tied to the now-trashed tenant rather
+     * than migrated along with them — a ticket's agent_id/ticket_type_id
+     * both belong to the old tenant, and moving the ticket without moving
+     * those would break tenant-scoped assumptions for the very data being
+     * "preserved". Must run inside the same RLS-bypassed block as the
+     * tenant's own soft-delete: this reassigns rows across two tenants at
+     * once, which RLS would otherwise block outright.
+     */
+    private function reassignClientsToMainCorporation(Tenant $tenant): void
+    {
+        $mainCorporation = Tenant::query()->where('slug', Tenant::MAIN_CORPORATION_SLUG)->first();
+
+        if ($mainCorporation === null || $tenant->is($mainCorporation)) {
+            return;
+        }
+
+        $clientRoleId = Role::query()->where('name', RoleName::Client->value)->whereNull('tenant_id')->value('id');
+
+        if ($clientRoleId === null) {
+            return;
+        }
+
+        $clientIds = DB::table('model_has_roles')
+            ->where('tenant_id', $tenant->id)
+            ->where('role_id', $clientRoleId)
+            ->where('model_type', User::class)
+            ->pluck('model_id');
+
+        if ($clientIds->isEmpty()) {
+            return;
+        }
+
+        // The (tenant_id, email) unique constraint on `users` would turn a
+        // clash into a raw DB error mid-move; surface it as a clean,
+        // actionable validation error instead, before anything is written.
+        $conflictingEmails = User::query()
+            ->where('tenant_id', $mainCorporation->id)
+            ->whereIn('email', User::query()->whereIn('id', $clientIds)->pluck('email'))
+            ->pluck('email');
+
+        if ($conflictingEmails->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'tenant' => [__('messages.tenants.client_email_conflict', ['emails' => $conflictingEmails->implode(', ')])],
+            ]);
+        }
+
+        DB::table('model_has_roles')
+            ->where('tenant_id', $tenant->id)
+            ->where('role_id', $clientRoleId)
+            ->where('model_type', User::class)
+            ->whereIn('model_id', $clientIds)
+            ->update(['tenant_id' => $mainCorporation->id]);
+
+        User::query()->whereIn('id', $clientIds)->update(['tenant_id' => $mainCorporation->id]);
+
+        // The role pivot row was updated with a raw query, bypassing the
+        // model events Spatie normally uses to invalidate its own cache.
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

@@ -17,8 +17,10 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -59,6 +61,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureQueueRlsBypass();
+
         Event::listen(Login::class, LogSuccessfulLogin::class);
         Event::listen(Logout::class, LogSuccessfulLogout::class);
         Event::listen(RoleAttachedEvent::class, [LogRoleOrPermissionChange::class, 'handleRoleAttached']);
@@ -114,6 +118,42 @@ class AppServiceProvider extends ServiceProvider
             ]);
 
             return rtrim(config('app.frontend_url'), '/')."/reset-password?{$query}";
+        });
+    }
+
+    /**
+     * The queue worker (`php artisan queue:work`, see infra/docker-compose.yml's
+     * `queue`/`reverb` services) is a single long-lived process that reuses
+     * ONE Postgres connection across every job it ever processes — unlike
+     * the per-request PHP-FPM model TenantContext::set()'s own docblock
+     * assumes, where a fresh connection makes a leaked session-level `SET`
+     * impossible. That connection never has app.tenant_id/app.bypass_rls
+     * set at all by default, so RLS blocks every queued job's own model
+     * restoration (Illuminate\Queue\SerializesModels re-queries the DB from
+     * just the serialized id): a single-model constructor property (e.g.
+     * TicketAssignedNotification's $ticket) throws ModelNotFoundException on
+     * restoration — a visible job failure — but the notifiable(s) collection
+     * SendQueuedNotifications wraps every recipient in uses a plain
+     * Collection::get() instead of firstOrFail(), so a blocked row just
+     * silently produces an empty collection: no exception, no notification,
+     * no error, ever. Every ShouldQueue notification in this app hit this.
+     *
+     * Bypassed only for the duration of each individual job (mirrors
+     * TenantContext::bypass()'s own reasoning for authorized system
+     * operations), not the worker's entire lifetime — Queue::before fires
+     * before the job payload is even unserialized (see
+     * Illuminate\Queue\Worker::process(), which raises this event strictly
+     * before calling $job->fire()), so it covers the restoration step too,
+     * not just the job's own handle() logic.
+     */
+    private function configureQueueRlsBypass(): void
+    {
+        Queue::before(function () {
+            DB::statement("SET app.bypass_rls = 'on'");
+        });
+
+        Queue::after(function () {
+            DB::statement("SET app.bypass_rls = 'off'");
         });
     }
 

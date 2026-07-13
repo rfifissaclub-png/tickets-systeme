@@ -2,6 +2,7 @@
 
 use App\Enums\RoleName;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Services\Tenancy\TenantContext;
 use Database\Seeders\RoleAndPermissionSeeder;
 
@@ -105,4 +106,48 @@ it('only a Super Admin may suspend (soft delete) a tenant', function () {
     );
 
     expect($trashed)->toBeTrue();
+});
+
+it('moves a suspended tenant\'s clients to Main Corporation but locks its staff out', function () {
+    [$tenant, $tenantAdmin] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+
+    $mainCorporation = app(TenantContext::class)->bypass(
+        'test fixture setup',
+        fn () => Tenant::factory()->create(['slug' => Tenant::MAIN_CORPORATION_SLUG]),
+    );
+
+    $client = User::factory()->for($tenant)->create();
+    $client->assignRole(RoleName::Client->value);
+
+    $agent = User::factory()->for($tenant)->create();
+    $agent->assignRole(RoleName::SupportAgent->value);
+
+    $superAdmin = createSuperAdmin();
+    $superAdminToken = loginAs('', $superAdmin->email);
+    $this->withToken($superAdminToken)->deleteJson("/api/v1/tenants/{$tenant->id}")->assertOk();
+
+    [$client, $agent, $tenantAdmin] = app(TenantContext::class)->bypass(
+        'test assertion',
+        fn () => [$client->fresh(), $agent->fresh(), $tenantAdmin->fresh()],
+    );
+
+    expect($client->tenant_id)->toBe($mainCorporation->id)
+        ->and($agent->tenant_id)->toBe($tenant->id)
+        ->and($tenantAdmin->tenant_id)->toBe($tenant->id);
+
+    // The client can still sign in — now under Main Corporation — while the
+    // suspended tenant's own staff can no longer resolve their tenant at all.
+    $this->postJson('/api/v1/auth/login', [
+        'tenant' => $mainCorporation->slug,
+        'email' => $client->email,
+        'password' => 'password',
+    ])->assertOk();
+
+    $this->postJson('/api/v1/auth/login', [
+        'tenant' => $tenant->slug,
+        'email' => $agent->email,
+        'password' => 'password',
+    ])->assertStatus(422);
 });

@@ -2,8 +2,10 @@
 
 use App\Enums\RoleName;
 use App\Models\User;
+use App\Notifications\UserAccountCreatedNotification;
 use App\Services\Tenancy\TenantContext;
 use Database\Seeders\RoleAndPermissionSeeder;
+use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
@@ -64,6 +66,68 @@ it('rejects a Tenant Admin granting the Super Admin role', function () {
         'password' => 'a-strong-password',
         'roles' => [RoleName::SuperAdmin->value],
     ])->assertStatus(422);
+});
+
+it('emails the new user their login and initial password on creation', function () {
+    Notification::fake();
+
+    [$tenant, $tenantAdmin] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+
+    $token = loginAs($tenant->slug, $tenantAdmin->email);
+
+    $this->withToken($token)->postJson('/api/v1/users', [
+        'name' => 'New Agent',
+        'email' => 'new-agent@acme.tms.local',
+        'password' => 'a-strong-password',
+    ])->assertCreated();
+
+    $created = app(TenantContext::class)->bypass(
+        'test assertion',
+        fn () => User::query()->where('email', 'new-agent@acme.tms.local')->first(),
+    );
+
+    Notification::assertSentTo(
+        $created,
+        UserAccountCreatedNotification::class,
+        function (UserAccountCreatedNotification $notification) use ($created, $tenant) {
+            $rendered = $notification->toMail($created)->render();
+
+            // The login form resolves a user by (workspace slug, email) — a
+            // tenant-scoped user has no way to sign in without knowing this
+            // slug, so it must be in the same email as the password.
+            return str_contains($rendered, 'a-strong-password')
+                && str_contains($rendered, $tenant->slug);
+        },
+    );
+});
+
+it('omits the workspace line from the welcome email for a platform-level (Super Admin) account', function () {
+    Notification::fake();
+
+    $superAdmin = createSuperAdmin();
+    $superAdminToken = loginAs('', $superAdmin->email);
+
+    $this->withToken($superAdminToken)->postJson('/api/v1/users', [
+        'name' => 'Second Super Admin',
+        'email' => 'second-super-admin@tms.local',
+        'password' => 'a-strong-password',
+    ])->assertCreated();
+
+    $created = app(TenantContext::class)->bypass(
+        'test assertion',
+        fn () => User::query()->where('email', 'second-super-admin@tms.local')->first(),
+    );
+
+    Notification::assertSentTo(
+        $created,
+        UserAccountCreatedNotification::class,
+        fn (UserAccountCreatedNotification $notification) => ! str_contains(
+            $notification->toMail($created)->render(),
+            'Workspace:',
+        ),
+    );
 });
 
 it('rejects creating a user with more than one role at once', function () {

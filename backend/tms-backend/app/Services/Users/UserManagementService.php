@@ -3,8 +3,10 @@
 namespace App\Services\Users;
 
 use App\Enums\RoleName;
+use App\Models\Tenant;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Notifications\UserAccountCreatedNotification;
 use App\Services\Tenancy\TenantContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
@@ -84,6 +86,21 @@ class UserManagementService
             // to have already confirmed the address, so send the normal
             // verification email rather than marking it pre-verified.
             $user->sendEmailVerificationNotification();
+
+            // The login form resolves a user by (tenant slug, email) — a
+            // tenant-scoped user (anyone but a Super Admin) literally cannot
+            // sign in without knowing this slug, and has no other way to
+            // learn it than being told here.
+            $tenantSlug = $targetTenantId !== null
+                ? Tenant::query()->whereKey($targetTenantId)->value('slug')
+                : null;
+
+            // The admin chose this password themselves (it's a required,
+            // plaintext input on the create-user form) — the new user has no
+            // other way to learn it, so it must go out over the one channel
+            // that doesn't persist it server-side (see the notification's
+            // own docblock for why mail-only).
+            $user->notify(new UserAccountCreatedNotification($data['email'], $data['password'], $tenantSlug));
 
             if ($roles !== []) {
                 $this->withTeamContext($targetTenantId, fn () => $user->syncRoles($roles));
