@@ -5,6 +5,7 @@ import { ArrowLeftIcon, PencilIcon, TicketIcon, TrashIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
+import { TicketAssignSelect } from '@/components/tickets/ticket-assign-select'
 import { TicketAttachmentList } from '@/components/tickets/ticket-attachment-list'
 import { TicketCommentThread } from '@/components/tickets/ticket-comment-thread'
 import { TicketForm, type TicketFormValues } from '@/components/tickets/ticket-form'
@@ -16,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toApiError } from '@/lib/api-client'
+import { useHasRole } from '@/hooks/use-auth'
 import { useDeleteTicket, useTicket, useUpdateTicket } from '@/hooks/use-tickets'
 
 export function TicketDetailPage() {
@@ -27,6 +29,10 @@ export function TicketDetailPage() {
   const { mutateAsync: remove } = useDeleteTicket()
   const [editing, setEditing] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  // Matches tickets.assign, held by Tenant Admin/Manager (Super Admin
+  // bypasses all permission checks) — see RoleAndPermissionSeeder. Purely a
+  // UX gate: TicketPolicy::assign() rejects anyone else regardless.
+  const canAssign = useHasRole('Tenant Admin', 'Manager', 'Super Admin')
 
   if (isLoading) {
     return (
@@ -144,7 +150,13 @@ export function TicketDetailPage() {
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t('tickets.detail.agent')}</dt>
-                  <dd>{ticket.agent?.name ?? t('common.unassigned')}</dd>
+                  <dd>
+                    {canAssign && !isReadOnly ? (
+                      <TicketAssignSelect ticketId={ticket.id} currentAgent={ticket.agent} />
+                    ) : (
+                      (ticket.agent?.name ?? t('common.unassigned'))
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t('tickets.detail.created')}</dt>

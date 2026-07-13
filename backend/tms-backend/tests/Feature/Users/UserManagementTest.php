@@ -66,6 +66,38 @@ it('rejects a Tenant Admin granting the Super Admin role', function () {
     ])->assertStatus(422);
 });
 
+it('rejects creating a user with more than one role at once', function () {
+    [$tenant, $tenantAdmin] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+
+    $token = loginAs($tenant->slug, $tenantAdmin->email);
+
+    $this->withToken($token)->postJson('/api/v1/users', [
+        'name' => 'Double Role',
+        'email' => 'double-role@acme.tms.local',
+        'password' => 'a-strong-password',
+        'roles' => [RoleName::Manager->value, RoleName::SupportAgent->value],
+    ])->assertStatus(422)
+        ->assertJsonValidationErrors('roles');
+});
+
+it('rejects assigning more than one role to an existing user at once', function () {
+    [$tenant, $tenantAdmin] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+
+    $agent = User::factory()->for($tenant)->create();
+    $agent->assignRole(RoleName::SupportAgent->value);
+
+    $token = loginAs($tenant->slug, $tenantAdmin->email);
+
+    $this->withToken($token)->patchJson("/api/v1/users/{$agent->id}/roles", [
+        'roles' => [RoleName::Manager->value, RoleName::SupportAgent->value],
+    ])->assertStatus(422)
+        ->assertJsonValidationErrors('roles');
+});
+
 it('rejects a duplicate email within the same tenant but allows it across two different tenants', function () {
     [$tenant, $tenantAdmin] = createTenantWithUser();
     app(TenantContext::class)->set($tenant->id);

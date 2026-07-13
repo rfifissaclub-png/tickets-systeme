@@ -67,3 +67,8 @@ export async function verifyEmail(payload: VerifyEmailPayload): Promise<string> 
   })
   return data.message ?? 'Email verified successfully.'
 }
+
+export async function resendVerificationEmail(): Promise<string> {
+  const { data } = await apiClient.post<ApiSuccessResponse<null>>('/auth/email/verification-notification')
+  return data.message ?? 'Verification link sent.'
+}

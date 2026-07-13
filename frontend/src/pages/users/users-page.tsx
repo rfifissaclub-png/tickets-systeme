@@ -55,11 +55,16 @@ export function UsersPage() {
   const { data: ticketTypes } = useTicketTypes()
 
   const [creatingOpen, setCreatingOpen] = useState(false)
-  const [creatingRoles, setCreatingRoles] = useState<RoleName[]>([])
+  // A user occupies exactly one position in this app's model (Tenant Admin,
+  // Manager, Support Agent, or Client) — never two at once, hence a single
+  // selection here rather than a checkbox list. null represents "no role
+  // assigned yet", a real, submittable state (StoreUserRequest/
+  // AssignUserRolesRequest both accept an empty roles array).
+  const [creatingRole, setCreatingRole] = useState<RoleName | null>(null)
   const { mutateAsync: create, isPending: creating } = useCreateUser()
 
   const [rolesTarget, setRolesTarget] = useState<User | null>(null)
-  const [pendingRoles, setPendingRoles] = useState<RoleName[]>([])
+  const [pendingRole, setPendingRole] = useState<RoleName | null>(null)
   const { mutateAsync: syncRoles, isPending: syncingRoles } = useSyncUserRoles(rolesTarget?.id ?? '')
 
   const [skillsTarget, setSkillsTarget] = useState<User | null>(null)
@@ -77,10 +82,10 @@ export function UsersPage() {
 
   const onCreate = async (values: CreateFormValues) => {
     try {
-      await create({ ...values, roles: creatingRoles })
+      await create({ ...values, roles: creatingRole ? [creatingRole] : [] })
       toast.success(t('users.createdToast'))
       createForm.reset()
-      setCreatingRoles([])
+      setCreatingRole(null)
       setCreatingOpen(false)
     } catch (error) {
       toast.error(toApiError(error).message)
@@ -88,13 +93,13 @@ export function UsersPage() {
   }
 
   const openRolesDialog = (target: User) => {
-    setPendingRoles(target.roles ?? [])
+    setPendingRole(target.roles?.[0] ?? null)
     setRolesTarget(target)
   }
 
   const onSaveRoles = async () => {
     try {
-      await syncRoles(pendingRoles)
+      await syncRoles(pendingRole ? [pendingRole] : [])
       toast.success(t('users.rolesUpdatedToast'))
       setRolesTarget(null)
     } catch (error) {
@@ -139,7 +144,7 @@ export function UsersPage() {
           <Button
             onClick={() => {
               createForm.reset()
-              setCreatingRoles([])
+              setCreatingRole(null)
               setCreatingOpen(true)
             }}
           >
@@ -272,19 +277,26 @@ export function UsersPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label>{t('users.form.roles')}</Label>
+              <Label>{t('users.form.role')}</Label>
               <div className="flex flex-wrap gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="creating-role"
+                    className="border-input size-4"
+                    checked={creatingRole === null}
+                    onChange={() => setCreatingRole(null)}
+                  />
+                  {t('users.form.noRole')}
+                </label>
                 {assignableRoles.map((role) => (
                   <label key={role} className="flex items-center gap-2 text-sm">
                     <input
-                      type="checkbox"
-                      className="border-input size-4 rounded"
-                      checked={creatingRoles.includes(role)}
-                      onChange={(event) =>
-                        setCreatingRoles((prev) =>
-                          event.target.checked ? [...prev, role] : prev.filter((r) => r !== role),
-                        )
-                      }
+                      type="radio"
+                      name="creating-role"
+                      className="border-input size-4"
+                      checked={creatingRole === role}
+                      onChange={() => setCreatingRole(role)}
                     />
                     {role}
                   </label>
@@ -307,17 +319,24 @@ export function UsersPage() {
             <DialogTitle>{t('users.editRolesFor', { name: rolesTarget?.name ?? '' })}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-wrap gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="pending-role"
+                className="border-input size-4"
+                checked={pendingRole === null}
+                onChange={() => setPendingRole(null)}
+              />
+              {t('users.form.noRole')}
+            </label>
             {assignableRoles.map((role) => (
               <label key={role} className="flex items-center gap-2 text-sm">
                 <input
-                  type="checkbox"
-                  className="border-input size-4 rounded"
-                  checked={pendingRoles.includes(role)}
-                  onChange={(event) =>
-                    setPendingRoles((prev) =>
-                      event.target.checked ? [...prev, role] : prev.filter((r) => r !== role),
-                    )
-                  }
+                  type="radio"
+                  name="pending-role"
+                  className="border-input size-4"
+                  checked={pendingRole === role}
+                  onChange={() => setPendingRole(role)}
                 />
                 {role}
               </label>

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { TicketForm, type TicketFormValues } from '@/components/tickets/ticket-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toApiError } from '@/lib/api-client'
+import { useHasRole } from '@/hooks/use-auth'
 import { useCreateTicket } from '@/hooks/use-tickets'
 
 export function TicketCreatePage() {
@@ -13,6 +14,11 @@ export function TicketCreatePage() {
   const navigate = useNavigate()
   const { mutateAsync } = useCreateTicket()
   const [formError, setFormError] = useState<string | null>(null)
+  // A Client can only ever raise a ticket for themselves (the backend
+  // forces client_id to their own id regardless of what's sent) — the
+  // picker only makes sense for staff creating a ticket on a client's
+  // behalf.
+  const isStaff = !useHasRole('Client')
 
   const onSubmit = async (values: TicketFormValues) => {
     setFormError(null)
@@ -43,6 +49,7 @@ export function TicketCreatePage() {
             submitLabel={t('tickets.create.submit')}
             formError={formError}
             onCancel={() => navigate(-1)}
+            showClientSelector={isStaff}
           />
         </CardContent>
       </Card>

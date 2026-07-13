@@ -11,12 +11,22 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { useTicketTypes } from '@/hooks/use-ticket-types'
+import { useUsers } from '@/hooks/use-users'
 import type { TicketPriority } from '@/types/models'
 
-function useTicketFormSchema() {
+/**
+ * requireClient: true only when a staff member is *creating* a ticket
+ * (showClientSelector on) — without picking a client explicitly, the
+ * backend defaults client_id to the acting user's own id
+ * (TicketService::create()), which would silently make the staff member
+ * the ticket's client. Not required on the edit form: the backend has no
+ * client_id field on ticket update at all, so there's nothing to submit.
+ */
+function useTicketFormSchema(requireClient: boolean) {
   const { t } = useTranslation()
   return z.object({
     ticket_type_id: z.string().min(1, t('tickets.form.chooseTypeError')),
+    client_id: requireClient ? z.string().min(1, t('tickets.form.chooseClientError')) : z.string().optional(),
     subject: z.string().trim().min(1, t('tickets.form.subjectRequiredError')).max(255),
     description: z.string().trim().min(1, t('tickets.form.descriptionRequiredError')),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
@@ -31,14 +41,32 @@ interface TicketFormProps {
   submitLabel: string
   formError?: string | null
   onCancel?: () => void
+  /** Shown (and required) only for a staff member creating a ticket on behalf of a client. */
+  showClientSelector?: boolean
 }
 
 const PRIORITY_OPTIONS: TicketPriority[] = ['low', 'medium', 'high', 'urgent']
 
-export function TicketForm({ defaultValues, onSubmit, submitLabel, formError, onCancel }: TicketFormProps) {
+export function TicketForm({
+  defaultValues,
+  onSubmit,
+  submitLabel,
+  formError,
+  onCancel,
+  showClientSelector = false,
+}: TicketFormProps) {
   const { t } = useTranslation()
-  const schema = useTicketFormSchema()
+  const schema = useTicketFormSchema(showClientSelector)
   const { data: ticketTypes, isLoading: typesLoading } = useTicketTypes()
+  // Filtered client-side rather than a dedicated ?role= query param: this
+  // app has no searchable/paginated user picker anywhere (the ticket type
+  // Select above loads its full list the same way), so a 100-row page is
+  // consistent with the rest of the UI rather than a one-off exception.
+  const { data: userPage, isLoading: usersLoading } = useUsers(
+    showClientSelector ? { per_page: 100 } : undefined,
+    { enabled: showClientSelector },
+  )
+  const clients = userPage?.users.filter((candidate) => candidate.roles?.includes('Client')) ?? []
 
   const {
     register,
@@ -50,6 +78,7 @@ export function TicketForm({ defaultValues, onSubmit, submitLabel, formError, on
     resolver: zodResolver(schema),
     defaultValues: {
       ticket_type_id: defaultValues?.ticket_type_id ?? '',
+      client_id: defaultValues?.client_id ?? '',
       subject: defaultValues?.subject ?? '',
       description: defaultValues?.description ?? '',
       priority: defaultValues?.priority ?? 'medium',
@@ -57,6 +86,7 @@ export function TicketForm({ defaultValues, onSubmit, submitLabel, formError, on
   })
 
   const ticketTypeId = watch('ticket_type_id')
+  const clientId = watch('client_id')
   const priority = watch('priority')
 
   return (
@@ -65,6 +95,29 @@ export function TicketForm({ defaultValues, onSubmit, submitLabel, formError, on
         <Alert variant="destructive" role="alert">
           <AlertDescription>{formError}</AlertDescription>
         </Alert>
+      )}
+
+      {showClientSelector && (
+        <div className="space-y-2">
+          <Label htmlFor="client_id">{t('tickets.form.client')}</Label>
+          {usersLoading ? (
+            <Skeleton className="h-9 w-full" />
+          ) : (
+            <Select value={clientId} onValueChange={(value) => setValue('client_id', value, { shouldValidate: true })}>
+              <SelectTrigger id="client_id" className="w-full" aria-invalid={!!errors.client_id}>
+                <SelectValue placeholder={t('tickets.form.chooseClient')} />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name} ({client.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {errors.client_id && <p className="text-destructive text-sm">{errors.client_id.message}</p>}
+        </div>
       )}
 
       <div className="space-y-2">

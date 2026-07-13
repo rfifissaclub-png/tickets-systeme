@@ -28,7 +28,11 @@ class AssignUserRolesRequest extends ApiFormRequest
             // sends the complete intended role set, same shape as
             // StoreTicketCommentRequest-style "here's the whole state" APIs
             // elsewhere in this app rather than separate add/remove verbs.
-            'roles' => ['required', 'array'],
+            // max:1, not min:1 — [] is a valid, meaningful state (strip all
+            // access without deleting the account), but a user occupies
+            // exactly one position in this app's model, never two at once
+            // (see StoreUserRequest's identical rule for the full reasoning).
+            'roles' => ['required', 'array', 'max:1'],
             'roles.*' => ['string', Rule::enum(RoleName::class), $this->guardSuperAdminGrant()],
         ];
     }

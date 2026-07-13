@@ -32,7 +32,14 @@ class StoreUserRequest extends ApiFormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'string', Password::defaults()],
-            'roles' => ['sometimes', 'array'],
+            // max:1 — a user occupies exactly one position in this app's
+            // model (Tenant Admin, Manager, Support Agent, or Client); nothing
+            // in the permission/policy layer is designed for one actor
+            // holding two of these at once, and stacking them would blend
+            // capabilities that are deliberately kept separate elsewhere
+            // (e.g. a Client with Support Agent's tickets.pull would break
+            // the ownership-only assumption the Client side relies on).
+            'roles' => ['sometimes', 'array', 'max:1'],
             'roles.*' => ['string', Rule::enum(RoleName::class), $this->guardSuperAdminGrant()],
         ];
     }

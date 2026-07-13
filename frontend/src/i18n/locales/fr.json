@@ -69,6 +69,8 @@
     "passwordsDontMatch": "Les mots de passe ne correspondent pas.",
     "verifyEmailTitle": "Vérification de l'e-mail",
     "invalidVerificationLinkDescription": "Ce lien de vérification manque d'informations requises.",
+    "verifyEmailBanner": "Veuillez vérifier votre adresse e-mail.",
+    "resendVerification": "Renvoyer l'e-mail de vérification",
     "accountMenu": "Menu du compte",
     "logOut": "Déconnexion",
     "logoutFailed": "La déconnexion a échoué côté serveur, mais vous avez été déconnecté localement."
@@ -145,7 +147,9 @@
       "statusChangedToast": "Statut changé pour {{status}}.",
       "moveTo": "Passer à {{status}}",
       "current": "(actuel)",
-      "noFurtherTransitions": "Aucune autre transition — ce ticket est fermé."
+      "noFurtherTransitions": "Aucune autre transition — ce ticket est fermé.",
+      "chooseAgent": "Assigner un agent",
+      "assignedToast": "Ticket assigné."
     },
     "create": {
       "title": "Nouveau ticket",
@@ -161,7 +165,10 @@
       "chooseType": "Choisissez un type",
       "priority": "Priorité",
       "description": "Description",
+      "client": "Client",
+      "chooseClient": "Choisissez un client",
       "chooseTypeError": "Choisissez un type de ticket.",
+      "chooseClientError": "Choisissez pour quel client est ce ticket.",
       "subjectRequiredError": "Le sujet est requis.",
       "descriptionRequiredError": "La description est requise."
     }
@@ -270,7 +277,8 @@
       "name": "Nom",
       "nameRequiredError": "Le nom est requis.",
       "initialPassword": "Mot de passe initial",
-      "roles": "Rôles"
+      "role": "Rôle",
+      "noRole": "Aucun rôle"
     },
     "columnName": "Nom",
     "columnEmail": "E-mail",

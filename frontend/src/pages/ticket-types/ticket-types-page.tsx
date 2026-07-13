@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { toApiError } from '@/lib/api-client'
+import { useHasRole } from '@/hooks/use-auth'
 import {
   useCreateTicketType,
   useDeleteTicketType,
@@ -71,6 +72,10 @@ function TicketTypeFormFields({
 
 export function TicketTypesPage() {
   const { t } = useTranslation()
+  // Matches ticket_types.manage, held only by Tenant Admin (Super Admin
+  // bypasses all permission checks) — see RoleAndPermissionSeeder. Purely a
+  // UX gate: the API rejects these calls from anyone else regardless.
+  const canManageTicketTypes = useHasRole('Tenant Admin', 'Super Admin')
   const { data: ticketTypes, isLoading } = useTicketTypes()
   const { mutateAsync: create, isPending: creating } = useCreateTicketType()
   const [editing, setEditing] = useState<TicketType | null>(null)
@@ -129,15 +134,17 @@ export function TicketTypesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{t('ticketTypes.title')}</h1>
           <p className="text-muted-foreground text-sm">{t('ticketTypes.subtitle')}</p>
         </div>
-        <Button
-          onClick={() => {
-            createForm.reset()
-            setCreatingOpen(true)
-          }}
-        >
-          <PlusIcon className="size-4" />
-          {t('ticketTypes.newType')}
-        </Button>
+        {canManageTicketTypes && (
+          <Button
+            onClick={() => {
+              createForm.reset()
+              setCreatingOpen(true)
+            }}
+          >
+            <PlusIcon className="size-4" />
+            {t('ticketTypes.newType')}
+          </Button>
+        )}
         <Dialog open={creatingOpen} onOpenChange={setCreatingOpen}>
           <DialogContent>
             <DialogHeader>
@@ -192,19 +199,21 @@ export function TicketTypesPage() {
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(ticketType)}>
-                        <PencilIcon className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t('common.delete')}
-                        onClick={() => onDelete(ticketType)}
-                      >
-                        <TrashIcon className="size-4" />
-                      </Button>
-                    </div>
+                    {canManageTicketTypes && (
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(ticketType)}>
+                          <PencilIcon className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t('common.delete')}
+                          onClick={() => onDelete(ticketType)}
+                        >
+                          <TrashIcon className="size-4" />
+                        </Button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

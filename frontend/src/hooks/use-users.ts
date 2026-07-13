@@ -19,11 +19,12 @@ export const userKeys = {
   list: (params: UserListParams) => [...userKeys.lists(), params] as const,
 }
 
-export function useUsers(params: UserListParams = {}) {
+export function useUsers(params: UserListParams = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: userKeys.list(params),
     queryFn: () => fetchUsers(params),
     placeholderData: (previousData) => previousData,
+    enabled: options.enabled ?? true,
   })
 }
 

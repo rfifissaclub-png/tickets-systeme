@@ -69,6 +69,8 @@
     "passwordsDontMatch": "Passwords don't match.",
     "verifyEmailTitle": "Email verification",
     "invalidVerificationLinkDescription": "This verification link is missing required information.",
+    "verifyEmailBanner": "Please verify your email address.",
+    "resendVerification": "Resend verification email",
     "accountMenu": "Account menu",
     "logOut": "Log out",
     "logoutFailed": "Logout request failed, but you have been signed out locally."
@@ -145,7 +147,9 @@
       "statusChangedToast": "Status changed to {{status}}.",
       "moveTo": "Move to {{status}}",
       "current": "(current)",
-      "noFurtherTransitions": "No further transitions — this ticket is closed."
+      "noFurtherTransitions": "No further transitions — this ticket is closed.",
+      "chooseAgent": "Assign an agent",
+      "assignedToast": "Ticket assigned."
     },
     "create": {
       "title": "New ticket",
@@ -161,7 +165,10 @@
       "chooseType": "Choose a type",
       "priority": "Priority",
       "description": "Description",
+      "client": "Client",
+      "chooseClient": "Choose a client",
       "chooseTypeError": "Choose a ticket type.",
+      "chooseClientError": "Choose which client this ticket is for.",
       "subjectRequiredError": "Subject is required.",
       "descriptionRequiredError": "Description is required."
     }
@@ -270,7 +277,8 @@
       "name": "Name",
       "nameRequiredError": "Name is required.",
       "initialPassword": "Initial password",
-      "roles": "Roles"
+      "role": "Role",
+      "noRole": "No role"
     },
     "columnName": "Name",
     "columnEmail": "Email",

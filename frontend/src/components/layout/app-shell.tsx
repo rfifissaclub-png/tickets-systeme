@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ErrorBoundary } from '@/components/common/error-boundary'
 import { useRealtimeNotifications } from '@/hooks/use-realtime-notifications'
 
+import { EmailVerificationBanner } from './email-verification-banner'
 import { LanguageToggle } from './language-toggle'
 import { NotificationBell } from './notification-bell'
 import { SidebarNav } from './sidebar-nav'
@@ -62,6 +63,8 @@ export function AppShell() {
           <ThemeToggle />
           <UserMenu />
         </header>
+
+        <EmailVerificationBanner />
 
         <main className="flex-1 p-4 md:p-6">
           <ErrorBoundary>
