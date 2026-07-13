@@ -219,7 +219,7 @@ class UserManagementService
     /**
      * Spatie's "teams" feature scopes every role/permission pivot row by
      * PermissionsTeamId, independently of PostgreSQL RLS (those pivot
-     * tables aren't RLS-protected at all — see the Phase 1 migration notes).
+     * tables aren't RLS-protected at all — see create_permission_tables).
      * A Tenant Admin's own bound request already has this set correctly to
      * their tenant; a Super Admin's never is (they have no tenant of their
      * own — see ResolveTenantContext), so role/skill writes on their behalf

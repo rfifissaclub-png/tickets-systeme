@@ -54,9 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    // The React app (Phase 6) isn't scaffolded yet, so this currently falls
-    // back to the API's own URL — notification links won't be real
-    // clickable frontend routes until FRONTEND_URL is set once that exists.
+    // The SPA's own origin — see FRONTEND_URL in .env.example. Falls back to
+    // APP_URL if unset, which is wrong wherever the frontend isn't served
+    // from the same origin as the API (always set this explicitly outside
+    // of local dev).
     'frontend_url' => env('FRONTEND_URL', env('APP_URL', 'http://localhost')),
 
     /*

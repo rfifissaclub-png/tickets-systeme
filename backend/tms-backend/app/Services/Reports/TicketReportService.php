@@ -99,7 +99,7 @@ class TicketReportService
 
     /**
      * Daily ticket creation vs. resolution counts over [$from, $to] — shaped
-     * for a frontend line/bar chart (Phase 6), not a rendered chart itself.
+     * for a frontend line/bar chart, not a rendered chart itself.
      *
      * @return Collection<int, array{date: string, created: int, resolved: int}>
      */

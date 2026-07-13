@@ -3,9 +3,8 @@
 namespace App\Enums;
 
 /**
- * The five fixed platform roles. Full seeding lands in Phase 2; this enum
- * exists now so Phase 1 code (policies, tests) has a single source of truth
- * for role names instead of hardcoded strings.
+ * The five fixed platform roles — a single source of truth for role names
+ * used by policies, seeders, and tests instead of hardcoded strings.
  */
 enum RoleName: string
 {

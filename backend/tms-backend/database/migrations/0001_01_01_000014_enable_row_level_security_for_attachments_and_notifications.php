@@ -11,7 +11,8 @@ return new class extends Migration
     public function up(): void
     {
         // ticket_attachments: same tenant-only pattern as every other
-        // tenant-owned table (see the Phase 1/3 RLS migrations).
+        // tenant-owned table (see enable_row_level_security and
+        // enable_row_level_security_for_tickets).
         DB::statement('ALTER TABLE ticket_attachments ENABLE ROW LEVEL SECURITY');
         DB::statement('ALTER TABLE ticket_attachments FORCE ROW LEVEL SECURITY');
 

@@ -8,7 +8,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      *
-     * Same tenant-isolation pattern as the Phase 1 enable_row_level_security
+     * Same tenant-isolation pattern as the enable_row_level_security
      * migration (see that file for the full rationale) applied to the three
      * ticket-domain tables, all of which carry a plain `tenant_id` column.
      */

@@ -126,7 +126,7 @@ class TenantContext
      *
      *   - Authorized Super Admin cross-tenant operations. Callers are
      *     responsible for checking that authorization *before* calling this.
-     *   - Pre-authentication lookups in the login flow (Phase 2): resolving a
+     *   - Pre-authentication lookups in the login flow: resolving a
      *     tenant by slug, then a user by email within it, necessarily happens
      *     before ResolveTenantContext has anything to bind — there is no
      *     tenant context yet by definition. The authorization boundary for

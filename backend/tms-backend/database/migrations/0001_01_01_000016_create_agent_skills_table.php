@@ -30,8 +30,9 @@ return new class extends Migration
         });
 
         // Same tenant-only RLS pattern as every other tenant-owned table
-        // (see the Phase 1/3 RLS migrations) — no notifications-style extra
-        // owner scoping needed, skills aren't private the way an inbox is.
+        // (see enable_row_level_security and enable_row_level_security_for_tickets)
+        // — no notifications-style extra owner scoping needed, skills aren't
+        // private the way an inbox is.
         DB::statement('ALTER TABLE agent_skills ENABLE ROW LEVEL SECURITY');
         DB::statement('ALTER TABLE agent_skills FORCE ROW LEVEL SECURITY');
 

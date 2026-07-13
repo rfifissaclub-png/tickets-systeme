@@ -43,8 +43,8 @@ class TicketCommentController extends Controller
             ]);
 
             // First non-internal reply from anyone other than the ticket's
-            // own client counts as the first response, for future SLA
-            // reporting (Phase 5) — set once, never overwritten.
+            // own client counts as the first response, feeding the average
+            // first-response-time report — set once, never overwritten.
             if (! $isInternal && $ticket->first_response_at === null && $request->user()->id !== $ticket->client_id) {
                 $ticket->forceFill(['first_response_at' => now()])->save();
             }
