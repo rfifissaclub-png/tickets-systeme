@@ -18,11 +18,26 @@
         </include>
     </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="BROADCAST_CONNECTION" value="null"/>
-        <env name="CACHE_STORE" value="array"/>
+        <!--
+            force="true" on every one of these: without it, PHPUnit only
+            sets an <env> value when that variable isn't *already* present
+            in the OS environment — it never overrides one that is. Under
+            Docker Compose, docker-compose.yml's env_file directive injects
+            every var from .env (APP_ENV=local, CACHE_STORE=redis,
+            DB_DATABASE=tms, ...) as real container-level environment
+            variables before PHP even starts, so every pin below was being
+            silently ignored and tests were running against the real dev
+            database and a shared Redis cache/queue instead of an isolated
+            test environment. Only surfaced by actually running the suite
+            under Docker Compose — a bare `php artisan test` on a host
+            without those vars pre-exported never exercises this path,
+            which is exactly why it went unnoticed for as long as it did.
+        -->
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <env name="BROADCAST_CONNECTION" value="null" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
         <!--
             DB_CONNECTION/DB_DATABASE are pinned here so tests can never
             accidentally run against sqlite (RLS/UUID features require real
@@ -31,12 +46,12 @@
             (host "postgres") and CI (host "127.0.0.1", a GitHub Actions
             service container) and must come from the real environment.
         -->
-        <env name="DB_CONNECTION" value="pgsql"/>
-        <env name="DB_DATABASE" value="tms_testing"/>
-        <env name="DB_URL" value=""/>
-        <env name="MAIL_MAILER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_DATABASE" value="tms_testing" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
         <!--
             Pinned off: the real .env points ATTACHMENTS_AV_HOST at "clamav",
             a Docker-internal hostname that doesn't resolve outside the
@@ -45,9 +60,34 @@
             TicketAttachmentAntivirusTest) rather than depending on a real
             clamd being reachable from wherever tests happen to run.
         -->
-        <env name="ATTACHMENTS_AV_ENABLED" value="false"/>
-        <env name="PULSE_ENABLED" value="false"/>
-        <env name="TELESCOPE_ENABLED" value="false"/>
-        <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="ATTACHMENTS_AV_ENABLED" value="false" force="true"/>
+        <env name="PULSE_ENABLED" value="false" force="true"/>
+        <env name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <env name="NIGHTWATCH_ENABLED" value="false" force="true"/>
+
+        <!--
+            Mirrors every <env> above, into $_SERVER specifically: phpdotenv's
+            adapter chain (vendor/vlucas/phpdotenv/src/Repository/
+            RepositoryBuilder.php) checks ServerConstAdapter ($_SERVER)
+            *before* EnvConstAdapter ($_ENV)/putenv, so <env force="true">
+            alone updates $_ENV/getenv() but a stale $_SERVER entry (already
+            populated from the container's real environment before PHP
+            started) still wins unless it's overridden here too.
+        -->
+        <server name="APP_ENV" value="testing" force="true"/>
+        <server name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>
+        <server name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <server name="BROADCAST_CONNECTION" value="null" force="true"/>
+        <server name="CACHE_STORE" value="array" force="true"/>
+        <server name="DB_CONNECTION" value="pgsql" force="true"/>
+        <server name="DB_DATABASE" value="tms_testing" force="true"/>
+        <server name="DB_URL" value="" force="true"/>
+        <server name="MAIL_MAILER" value="array" force="true"/>
+        <server name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <server name="SESSION_DRIVER" value="array" force="true"/>
+        <server name="ATTACHMENTS_AV_ENABLED" value="false" force="true"/>
+        <server name="PULSE_ENABLED" value="false" force="true"/>
+        <server name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <server name="NIGHTWATCH_ENABLED" value="false" force="true"/>
     </php>
 </phpunit>

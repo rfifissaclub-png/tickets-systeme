@@ -5,11 +5,18 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: tms
+      # POSTGRES_USER is deliberately unset: Postgres then bootstraps as its
+      # own default "postgres" superuser (this password applies to that
+      # role) instead of making the app's own "tms" role a superuser — see
+      # 00-create-app-role.sql for why that distinction matters.
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: tms
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # docker-entrypoint-initdb.d scripts run in filename order — 00- must
+      # create the non-superuser "tms" app role (see that file) before
+      # anything else runs, so it's mounted first alphabetically.
+      - ./docker/postgres/00-create-app-role.sql:/docker-entrypoint-initdb.d/00-create-app-role.sql:ro
       - ./docker/postgres/init-testing-db.sql:/docker-entrypoint-initdb.d/init-testing-db.sql:ro
     ports:
       - "5432:5432"

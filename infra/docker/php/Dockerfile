@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         intl \
         zip \
         opcache \
+        pcntl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY infra/docker/php/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
