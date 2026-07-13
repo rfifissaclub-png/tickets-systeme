@@ -3,6 +3,7 @@ import {
   BuildingIcon,
   InboxIcon,
   LayoutDashboardIcon,
+  ScrollTextIcon,
   TagsIcon,
   TicketIcon,
   UsersIcon,
@@ -51,5 +52,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/tenants',
     icon: BuildingIcon,
     roles: ['Super Admin'],
+  },
+  {
+    labelKey: 'nav.auditLogs',
+    to: '/audit-logs',
+    icon: ScrollTextIcon,
+    roles: ['Tenant Admin', 'Super Admin'],
   },
 ]

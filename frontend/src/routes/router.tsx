@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 
 import { AppShell } from '@/components/layout/app-shell'
+import { AuditLogsPage } from '@/pages/audit-logs/audit-logs-page'
 import { ForgotPasswordPage } from '@/pages/auth/forgot-password-page'
 import { LoginPage } from '@/pages/auth/login-page'
 import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
           { path: '/ticket-types', element: <TicketTypesPage /> },
           { path: '/users', element: <UsersPage /> },
           { path: '/tenants', element: <TenantsPage /> },
+          { path: '/audit-logs', element: <AuditLogsPage /> },
         ],
       },
     ],

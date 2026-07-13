@@ -23,6 +23,7 @@
     "ticketTypes": "Ticket Types",
     "users": "Users",
     "tenants": "Entities",
+    "auditLogs": "Audit Log",
     "openNavigation": "Open navigation",
     "navigation": "Navigation",
     "primary": "Primary"
@@ -317,5 +318,19 @@
     "createdToast": "Entity created.",
     "suspendedToast": "Entity suspended.",
     "suspendConfirm": "Suspend \"{{name}}\"? Its users will no longer be able to sign in."
+  },
+  "auditLogs": {
+    "title": "Audit Log",
+    "subtitle": "A record of every sensitive action taken across your organization.",
+    "filterAction": "Action",
+    "filterActionPlaceholder": "e.g. role.attached",
+    "filterFrom": "From",
+    "filterTo": "To",
+    "columnDate": "Date",
+    "columnActor": "Actor",
+    "columnAction": "Action",
+    "columnTarget": "Target",
+    "columnIp": "IP address",
+    "emptyTitle": "No audit entries match your filters"
   }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AgentSkillController;
+use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
@@ -90,4 +91,6 @@ Route::middleware(['auth.prime', 'auth:sanctum', 'tenant.context'])->group(funct
     Route::get('/reports/tickets-by-agent', [ReportController::class, 'byAgent'])->name('reports.by-agent');
     Route::get('/reports/tickets-by-tenant', [ReportController::class, 'byTenant'])->name('reports.by-tenant');
     Route::get('/reports/ticket-trends', [ReportController::class, 'trends'])->name('reports.trends');
+
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 });

@@ -23,6 +23,7 @@
     "ticketTypes": "Types de tickets",
     "users": "Utilisateurs",
     "tenants": "Entités",
+    "auditLogs": "Journal d'audit",
     "openNavigation": "Ouvrir la navigation",
     "navigation": "Navigation",
     "primary": "Principale"
@@ -317,5 +318,19 @@
     "createdToast": "Entité créée.",
     "suspendedToast": "Entité suspendue.",
     "suspendConfirm": "Suspendre « {{name}} » ? Ses utilisateurs ne pourront plus se connecter."
+  },
+  "auditLogs": {
+    "title": "Journal d'audit",
+    "subtitle": "L'historique de toutes les actions sensibles effectuées dans votre organisation.",
+    "filterAction": "Action",
+    "filterActionPlaceholder": "ex. role.attached",
+    "filterFrom": "Du",
+    "filterTo": "Au",
+    "columnDate": "Date",
+    "columnActor": "Auteur",
+    "columnAction": "Action",
+    "columnTarget": "Cible",
+    "columnIp": "Adresse IP",
+    "emptyTitle": "Aucune entrée ne correspond à vos filtres"
   }
 }

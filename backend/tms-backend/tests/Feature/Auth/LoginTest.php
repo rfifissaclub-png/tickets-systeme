@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Tenancy\TenantContext;
 
@@ -80,6 +81,28 @@ it('issues a non-expiring token when remember is true', function () {
     ]);
 
     $response->assertOk()->assertJsonPath('data.expires_at', null);
+});
+
+it('records the logged-in user as the actor on the auth.login audit entry', function () {
+    [$tenant, $user] = createTenantWithUser(['email' => 'audited-login@example.com']);
+
+    $this->postJson('/api/v1/auth/login', [
+        'tenant' => $tenant->slug,
+        'email' => 'audited-login@example.com',
+        'password' => 'password',
+    ])->assertOk();
+
+    // No Sanctum principal is ever resolved during the login request
+    // itself (see LoginController's own docblock) — AuditService's default
+    // Auth::id() would silently record a null actor here without
+    // LogSuccessfulLogin passing it explicitly.
+    $entry = app(TenantContext::class)->bypass(
+        'test assertion',
+        fn () => AuditLog::query()->where('action', 'auth.login')->where('auditable_id', $user->id)->first(),
+    );
+
+    expect($entry)->not->toBeNull()
+        ->and($entry->actor_id)->toBe($user->id);
 });
 
 it('rate limits repeated login attempts for the same email and IP', function () {

@@ -82,3 +82,16 @@ export interface AppNotification {
   read_at: string | null
   created_at: string
 }
+
+export interface AuditLog {
+  id: string
+  tenant_id: string | null
+  actor: { id: string; name: string; email: string } | null
+  action: string
+  auditable_type: string | null
+  auditable_id: string | null
+  old_values: Record<string, unknown> | null
+  new_values: Record<string, unknown> | null
+  ip_address: string | null
+  created_at: string
+}

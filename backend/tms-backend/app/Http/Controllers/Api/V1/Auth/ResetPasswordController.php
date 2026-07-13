@@ -39,7 +39,11 @@ class ResetPasswordController extends Controller
                 ],
                 function ($user) use ($data, $auditService) {
                     $user->forceFill(['password' => $data['password']])->save();
-                    $auditService->log('auth.password_reset', $user);
+                    // Pre-auth by definition (that's the entire point of a
+                    // password reset) — no Sanctum principal is resolved
+                    // for this request, so AuditService's default Auth::id()
+                    // would silently record no actor at all.
+                    $auditService->log('auth.password_reset', $user, actorId: $user->getKey());
                     event(new PasswordResetEvent($user));
                 },
             );

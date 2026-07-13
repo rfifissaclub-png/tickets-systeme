@@ -40,6 +40,7 @@ class RoleAndPermissionSeeder extends Seeder
         'ticket_types.manage',
         'agent_skills.manage',
         'reports.view',
+        'audit_logs.view',
     ];
 
     /** @var array<string, list<string>> */
@@ -49,7 +50,7 @@ class RoleAndPermissionSeeder extends Seeder
             'tenants.view', 'tenants.update',
             'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.update', 'tickets.delete',
             'tickets.assign', 'tickets.viewInternal', 'ticket_types.manage', 'agent_skills.manage',
-            'reports.view',
+            'reports.view', 'audit_logs.view',
         ],
         RoleName::Manager->value => [
             'users.viewAny', 'users.view', 'users.update',

@@ -20,11 +20,23 @@ class AuditService
      * @param  array<string, mixed>|null  $oldValues
      * @param  array<string, mixed>|null  $newValues
      */
-    public function log(string $action, ?Model $auditable = null, ?array $oldValues = null, ?array $newValues = null): void
-    {
+    public function log(
+        string $action,
+        ?Model $auditable = null,
+        ?array $oldValues = null,
+        ?array $newValues = null,
+        // Auth::id() is null for every pre-Sanctum-authentication flow
+        // (login itself, password reset, email verification via a signed
+        // link) — none of them go through auth:sanctum, so there's no
+        // resolved guard principal yet even though the acted-upon user is
+        // right there as $auditable. Those call sites must pass the actor
+        // id explicitly; every other caller runs inside an authenticated
+        // request and can rely on the default.
+        ?string $actorId = null,
+    ): void {
         AuditLog::query()->create([
             'tenant_id' => $this->resolveTenantId($auditable),
-            'actor_id' => Auth::id(),
+            'actor_id' => $actorId ?? Auth::id(),
             'action' => $action,
             'auditable_type' => $auditable?->getMorphClass(),
             'auditable_id' => $auditable?->getKey(),

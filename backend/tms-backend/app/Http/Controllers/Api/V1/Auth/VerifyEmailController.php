@@ -30,7 +30,11 @@ class VerifyEmailController extends Controller
 
             if (! $user->hasVerifiedEmail()) {
                 $user->markEmailAsVerified();
-                $auditService->log('auth.email_verified', $user);
+                // Unauthenticated by nature (see this controller's own
+                // docblock — a signed link, not a Sanctum guard) — no
+                // principal is resolved for this request, so AuditService's
+                // default Auth::id() would silently record no actor at all.
+                $auditService->log('auth.email_verified', $user, actorId: $user->getKey());
             }
 
             return $user;
