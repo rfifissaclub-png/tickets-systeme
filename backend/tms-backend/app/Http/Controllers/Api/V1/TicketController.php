@@ -46,8 +46,10 @@ class TicketController extends Controller
         // TicketService::create() only keeps its Super Admin bypass active
         // for as long as it runs — a cross-tenant client is otherwise
         // invisible under RLS by the time this eager-load runs afterward.
-        $load = fn () => $ticket->load(['ticketType', 'client', 'agent']);
-        $this->tenantContext->bound() ? $load() : $this->tenantContext->bypass('platform-wide ticket creation (super admin)', $load);
+        $this->tenantContext->runScoped(
+            'platform-wide ticket creation (super admin)',
+            fn () => $ticket->load(['ticketType', 'client', 'agent']),
+        );
 
         return ApiResponse::success(
             data: new TicketResource($ticket),
@@ -60,17 +62,29 @@ class TicketController extends Controller
     {
         $this->authorize('view', $ticket);
 
-        return ApiResponse::success(new TicketResource($ticket->load(['ticketType', 'client', 'agent'])));
+        // The route binding for {ticket} already handled a Super Admin's
+        // cross-tenant lookup of the ticket itself (see AppServiceProvider)
+        // — but that bypass ends there, so the client/agent relations below
+        // (their own users, possibly in yet another tenant) need their own.
+        $this->tenantContext->runScoped(
+            'platform-wide ticket lookup (super admin)',
+            fn () => $ticket->load(['ticketType', 'client', 'agent']),
+        );
+
+        return ApiResponse::success(new TicketResource($ticket));
     }
 
     public function update(UpdateTicketRequest $request, Ticket $ticket): JsonResponse
     {
         $this->authorize('update', $ticket);
 
-        $ticket = $this->ticketService->update($ticket, $request->validated());
+        $ticket = $this->tenantContext->runScoped(
+            'platform-wide ticket update (super admin)',
+            fn () => $this->ticketService->update($ticket, $request->validated())->load(['ticketType', 'client', 'agent']),
+        );
 
         return ApiResponse::success(
-            data: new TicketResource($ticket->load(['ticketType', 'client', 'agent'])),
+            data: new TicketResource($ticket),
             message: __('messages.tickets.updated'),
         );
     }
@@ -79,7 +93,7 @@ class TicketController extends Controller
     {
         $this->authorize('delete', $ticket);
 
-        $ticket->delete();
+        $this->tenantContext->runScoped('platform-wide ticket deletion (super admin)', fn () => $ticket->delete());
 
         return ApiResponse::success(message: __('messages.tickets.deleted'));
     }

@@ -14,11 +14,13 @@ use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 
 it('notifies the agent when a manager directly assigns a ticket', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
     NotificationFacade::fake();
 
     [$tenant, , , $agent, $ticket] = createTicketFixture();
 
     app(TenantContext::class)->set($tenant->id);
+    $agent->assignRole(RoleName::SupportAgent->value);
 
     app(TicketService::class)->assign($ticket, $agent);
 

@@ -30,6 +30,8 @@ return [
         'invalid_transition' => 'Cannot transition a ticket from ":from" to ":to".',
         'not_qualified' => 'You are not qualified to pull this ticket type. Ask an administrator to grant you this skill.',
         'client_tenant_mismatch' => 'This client does not belong to the selected entity.',
+        'agent_not_assignable' => 'The selected user is not an assignable agent.',
+        'agent_tenant_mismatch' => 'The selected agent does not belong to this ticket\'s entity.',
     ],
 
     'ticket_types' => [

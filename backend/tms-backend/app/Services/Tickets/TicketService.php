@@ -133,6 +133,38 @@ class TicketService
             throw new TicketIsReadOnlyException($ticket->status);
         }
 
+        // Belt-and-suspenders alongside AssignTicketRequest's own checks:
+        // those are RLS-scoped to whichever tenant validated the request,
+        // so they already guarantee both of these for everyone but a Super
+        // Admin — for them specifically, both checks are skipped there (RLS
+        // would block the lookup regardless of correctness) and enforced
+        // here instead, the one place that runs after the cross-tenant
+        // bypass TicketAssignmentController wraps this in.
+        //
+        // withTeam($agent->tenant_id, ...): hasAnyRole() is itself
+        // team-scoped (Spatie's "teams" feature), independent of the RLS
+        // bypass above — without binding the *agent's own* team here, this
+        // would check against whichever team the acting request happens to
+        // be bound to (the Super Admin's own platform team, not the
+        // agent's), finding no matching role row for a genuinely valid
+        // agent and rejecting them incorrectly.
+        $isAssignable = $this->tenantContext->withTeam(
+            $agent->tenant_id,
+            fn () => $agent->hasAnyRole([RoleName::SupportAgent->value, RoleName::Manager->value, RoleName::TenantAdmin->value]),
+        );
+
+        if (! $isAssignable) {
+            throw ValidationException::withMessages([
+                'agent_id' => [__('messages.tickets.agent_not_assignable')],
+            ]);
+        }
+
+        if ($agent->tenant_id !== $ticket->tenant_id) {
+            throw ValidationException::withMessages([
+                'agent_id' => [__('messages.tickets.agent_tenant_mismatch')],
+            ]);
+        }
+
         return DB::transaction(function () use ($ticket, $agent) {
             $ticket->agent_id = $agent->id;
 

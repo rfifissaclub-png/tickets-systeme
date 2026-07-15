@@ -89,6 +89,35 @@ class TenantContext
     }
 
     /**
+     * Temporarily binds Spatie's team resolver to $tenantId's team (or the
+     * reserved platform team for a tenant-less target — see teamIdFor())
+     * for the duration of $callback, then restores whatever was bound
+     * before. Independent of bound()/bypass(): the acting user's own
+     * session stays itself bound throughout a request (see
+     * ResolveTenantContext), but a role/permission check *about* a
+     * different specific user (e.g. "is this agent actually assignable?",
+     * checked by a Super Admin acting cross-tenant) needs that user's own
+     * team, not the actor's.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function withTeam(?string $tenantId, callable $callback): mixed
+    {
+        $registrar = app(PermissionRegistrar::class);
+        $previous = $registrar->getPermissionsTeamId();
+        $registrar->setPermissionsTeamId(self::teamIdFor($tenantId));
+
+        try {
+            return $callback();
+        } finally {
+            $registrar->setPermissionsTeamId($previous);
+        }
+    }
+
+    /**
      * Independent of tenant binding: notifications are RLS-scoped to
      * `notifiable_id = app.user_id`, not just tenant_id, so one user's
      * notifications are never visible to another in the same tenant (a
@@ -116,6 +145,26 @@ class TenantContext
     public function bound(): bool
     {
         return $this->tenantId !== null;
+    }
+
+    /**
+     * Runs $callback normally when a tenant is bound, or inside an audited
+     * bypass() when not — the recurring shape of "a Super Admin, who has no
+     * tenant of their own, needs this same tenant-scoped operation to work
+     * platform-wide instead of throwing/returning nothing", used across the
+     * ticket domain (search, pool, reports, and the ticket-detail
+     * read/write paths). Centralizes the
+     * `bound() ? $callback() : bypass($reason, $callback)` ternary that
+     * would otherwise repeat at every one of those call sites.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function runScoped(string $reason, callable $callback): mixed
+    {
+        return $this->bound() ? $callback() : $this->bypass($reason, $callback);
     }
 
     /**

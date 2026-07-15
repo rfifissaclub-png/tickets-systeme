@@ -30,6 +30,8 @@ return [
         'invalid_transition' => 'Impossible de faire passer un ticket de « :from » à « :to ».',
         'not_qualified' => "Vous n'êtes pas qualifié pour prendre ce type de ticket. Demandez à un administrateur de vous attribuer cette compétence.",
         'client_tenant_mismatch' => "Ce client n'appartient pas à l'entité sélectionnée.",
+        'agent_not_assignable' => "L'utilisateur sélectionné n'est pas un agent assignable.",
+        'agent_tenant_mismatch' => "L'agent sélectionné n'appartient pas à l'entité de ce ticket.",
     ],
 
     'ticket_types' => [

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\Auditable;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use App\Services\Tenancy\TenantContext;
 use Database\Factories\TicketFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -54,6 +55,29 @@ class Ticket extends Model
     public function isReadOnly(): bool
     {
         return $this->status === TicketStatus::Resolved || $this->status === TicketStatus::Closed;
+    }
+
+    /**
+     * Every route with a `Ticket $ticket` parameter (show/update/destroy,
+     * status, assign, comments, attachments) relies on Laravel's implicit
+     * route model binding, which by default resolves with a plain
+     * `$query->first()` — no bypass, so a Super Admin (no tenant bound, see
+     * ResolveTenantContext) 404s before the controller, let alone the
+     * policy, ever runs. Overriding this (rather than a global
+     * `Route::bind('ticket', ...)`) keeps the fix scoped to genuine
+     * implicit *model* binding specifically: TicketPoolController::pull()'s
+     * `{ticket}` route parameter is typed `string`, not `Ticket` (it does
+     * its own locked lookup instead — see that controller's own docblock),
+     * so it never reaches this method at all, unlike a name-keyed
+     * Route::bind() which would have applied regardless of that method's
+     * own parameter type and broken it.
+     */
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        return app(TenantContext::class)->runScoped(
+            'platform-wide ticket lookup (super admin)',
+            fn () => parent::resolveRouteBinding($value, $field),
+        );
     }
 
     /**

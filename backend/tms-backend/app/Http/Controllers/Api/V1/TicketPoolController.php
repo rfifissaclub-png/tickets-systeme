@@ -45,8 +45,10 @@ class TicketPoolController extends Controller
         // every other tenant-owned read) would otherwise fail closed under
         // RLS before the policy even runs — same reasoning as
         // TicketPoolService's own Super Admin handling.
-        $lookup = fn () => Ticket::query()->findOrFail($ticket);
-        $ticketModel = $this->tenantContext->bound() ? $lookup() : $this->tenantContext->bypass('platform-wide ticket pool (super admin)', $lookup);
+        $ticketModel = $this->tenantContext->runScoped(
+            'platform-wide ticket pool (super admin)',
+            fn () => Ticket::query()->findOrFail($ticket),
+        );
 
         $this->authorize('pull', $ticketModel);
 
@@ -57,8 +59,10 @@ class TicketPoolController extends Controller
         // these relations happens after it's already returned — including
         // 'agent', which for a Super Admin is their own user row, itself
         // invisible under RLS without a tenant bound.
-        $load = fn () => $assigned->load(['ticketType', 'client', 'agent']);
-        $this->tenantContext->bound() ? $load() : $this->tenantContext->bypass('platform-wide ticket pool (super admin)', $load);
+        $this->tenantContext->runScoped(
+            'platform-wide ticket pool (super admin)',
+            fn () => $assigned->load(['ticketType', 'client', 'agent']),
+        );
 
         return ApiResponse::success(
             data: new TicketResource($assigned),

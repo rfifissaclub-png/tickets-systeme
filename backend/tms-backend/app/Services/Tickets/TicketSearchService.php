@@ -42,7 +42,7 @@ class TicketSearchService
             return $query->paginate(min((int) $request->query('per_page', 25), 100));
         };
 
-        return $this->tenantContext->bound() ? $run() : $this->tenantContext->bypass('platform-wide ticket list (super admin)', $run);
+        return $this->tenantContext->runScoped('platform-wide ticket list (super admin)', $run);
     }
 
     private function applyOwnershipScope(Builder $query, User $actor): void

@@ -69,7 +69,7 @@ class TicketPoolService
             return $query->orderBy('created_at')->paginate($perPage);
         };
 
-        return $tenantId !== null ? $build() : $this->tenantContext->bypass('platform-wide ticket pool (super admin)', $build);
+        return $this->tenantContext->runScoped('platform-wide ticket pool (super admin)', $build);
     }
 
     /**
@@ -94,7 +94,7 @@ class TicketPoolService
 
         $run = fn () => $this->pullWithinTransaction($ticketId, $agent, $tenantId);
 
-        return $tenantId !== null ? $run() : $this->tenantContext->bypass('platform-wide ticket pull (super admin)', $run);
+        return $this->tenantContext->runScoped('platform-wide ticket pull (super admin)', $run);
     }
 
     private function pullWithinTransaction(string $ticketId, User $agent, ?string $tenantId): Ticket

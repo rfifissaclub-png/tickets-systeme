@@ -32,6 +32,19 @@ use Spatie\Permission\Events\RoleDetachedEvent;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /** @see self::configureQueueRlsBypass() */
+    /**
+     * A stack, not a single value: @see self::configureQueueRlsBypass()'s
+     * own docblock for why a job can nest another (broadcasting a
+     * notification dispatches its own further queued event from inside the
+     * outer notification job's own execution) — a single shared property
+     * would have the inner job's before() clobber the outer job's own saved
+     * "what to restore to" before the outer job's after() ever reads it.
+     *
+     * @var list<string|null>
+     */
+    private array $queueBypassRlsStack = [];
+
     /**
      * Register any application services.
      */
@@ -145,15 +158,49 @@ class AppServiceProvider extends ServiceProvider
      * Illuminate\Queue\Worker::process(), which raises this event strictly
      * before calling $job->fire()), so it covers the restoration step too,
      * not just the job's own handle() logic.
+     *
+     * Restores whatever the setting was before, rather than unconditionally
+     * back to 'off': with QUEUE_CONNECTION=sync (only ever the test suite —
+     * see phpunit.xml — production always uses the separate queue/reverb
+     * containers, an entirely different process and DB connection these
+     * hooks never fire in), a ShouldQueue notification dispatched from
+     * *inside* a web request's own TenantContext::bypass() block (e.g. a
+     * Super Admin's cross-tenant ticket assignment notifying the new agent)
+     * runs these hooks nested inside that same connection's still-open
+     * bypass. Blindly setting 'off' on Queue::after would silently end the
+     * outer bypass early, well before the request handler that opened it
+     * ever returns.
+     *
+     * Pushed onto (and popped off) $queueBypassRlsStack rather than a
+     * single property: broadcasting a notification (one of this app's
+     * three channels on most Ticket*Notification classes) dispatches its
+     * own further queued BroadcastNotificationCreated job from *inside*
+     * the outer notification job's own execution — a single shared "what
+     * to restore to" value would have that inner job's before() overwrite
+     * the outer job's own saved value before the outer job's after() ever
+     * reads it back, restoring to the wrong (inner) state instead of what
+     * was actually there when the outer job started. Only ever surfaced by
+     * a real notify() call with more than one queued channel, not a fake().
      */
     private function configureQueueRlsBypass(): void
     {
         Queue::before(function () {
+            $this->queueBypassRlsStack[] = DB::selectOne("SELECT current_setting('app.bypass_rls', true) as v")->v;
             DB::statement("SET app.bypass_rls = 'on'");
         });
 
         Queue::after(function () {
-            DB::statement("SET app.bypass_rls = 'off'");
+            $previous = array_pop($this->queueBypassRlsStack);
+            DB::statement("SELECT set_config('app.bypass_rls', ?, false)", [$previous ?: 'off']);
+        });
+
+        // Queue::after (JobProcessed) only fires when a job *succeeds* —
+        // without this, a job that throws leaves its entry on the stack
+        // forever, permanently misaligning every later pop() in whatever
+        // process (the persistent queue worker, not a per-request one —
+        // see this method's own docblock) hits it next.
+        Queue::failing(function () {
+            array_pop($this->queueBypassRlsStack);
         });
     }
 

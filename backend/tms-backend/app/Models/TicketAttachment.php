@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\Auditable;
+use App\Services\Tenancy\TenantContext;
 use Database\Factories\TicketAttachmentFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -40,6 +41,19 @@ class TicketAttachment extends Model
             $this->stored_path,
             now()->addMinutes($expiresInMinutes),
             ['ResponseContentDisposition' => 'attachment; filename="'.addslashes($this->original_filename).'"'],
+        );
+    }
+
+    /**
+     * Same reasoning as Ticket::resolveRouteBinding(): implicit route model
+     * binding on `{attachment}` (download/destroy) has no bypass by
+     * default, so a Super Admin 404s before the controller/policy ever run.
+     */
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        return app(TenantContext::class)->runScoped(
+            'platform-wide attachment lookup (super admin)',
+            fn () => parent::resolveRouteBinding($value, $field),
         );
     }
 
