@@ -56,6 +56,7 @@ export async function fetchTicket(id: string): Promise<Ticket> {
 
 export interface CreateTicketPayload {
   ticket_type_id: string
+  tenant_id?: string
   client_id?: string
   subject: string
   description: string

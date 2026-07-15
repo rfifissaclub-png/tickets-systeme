@@ -7,6 +7,7 @@ use App\Http\Requests\Tickets\StoreTicketRequest;
 use App\Http\Requests\Tickets\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
+use App\Services\Tenancy\TenantContext;
 use App\Services\Tickets\TicketSearchService;
 use App\Services\Tickets\TicketService;
 use App\Support\ApiResponse;
@@ -18,6 +19,7 @@ class TicketController extends Controller
     public function __construct(
         private readonly TicketService $ticketService,
         private readonly TicketSearchService $ticketSearchService,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -41,8 +43,14 @@ class TicketController extends Controller
     {
         $ticket = $this->ticketService->create($request->user(), $request->validated());
 
+        // TicketService::create() only keeps its Super Admin bypass active
+        // for as long as it runs — a cross-tenant client is otherwise
+        // invisible under RLS by the time this eager-load runs afterward.
+        $load = fn () => $ticket->load(['ticketType', 'client', 'agent']);
+        $this->tenantContext->bound() ? $load() : $this->tenantContext->bypass('platform-wide ticket creation (super admin)', $load);
+
         return ApiResponse::success(
-            data: new TicketResource($ticket->load(['ticketType', 'client', 'agent'])),
+            data: new TicketResource($ticket),
             message: __('messages.tickets.created'),
             status: 201,
         );

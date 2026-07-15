@@ -29,6 +29,7 @@ return [
         'already_assigned' => 'This ticket has already been claimed by another agent.',
         'invalid_transition' => 'Cannot transition a ticket from ":from" to ":to".',
         'not_qualified' => 'You are not qualified to pull this ticket type. Ask an administrator to grant you this skill.',
+        'client_tenant_mismatch' => 'This client does not belong to the selected entity.',
     ],
 
     'ticket_types' => [
@@ -52,7 +53,6 @@ return [
         'skills_updated' => 'Skills updated.',
         'only_super_admin_grants_super_admin' => 'Only a Super Admin may grant the Super Admin role.',
         'super_admin_role_requires_no_tenant' => 'The Super Admin role can only be granted to a platform-level account with no tenant.',
-        'skills_must_match_tenant' => 'One or more ticket types do not belong to this user\'s tenant.',
         'welcome_email_subject' => 'Your TMS account has been created',
         'welcome_email_intro' => 'An administrator has created an account for you on TMS.',
         'welcome_email_workspace' => 'Workspace: :workspace',

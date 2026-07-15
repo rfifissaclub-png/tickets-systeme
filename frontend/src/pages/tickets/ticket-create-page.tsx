@@ -19,13 +19,17 @@ export function TicketCreatePage() {
   // picker only makes sense for staff creating a ticket on a client's
   // behalf.
   const isStaff = !useHasRole('Client')
+  const isSuperAdmin = useHasRole('Super Admin')
 
   const onSubmit = async (values: TicketFormValues) => {
     setFormError(null)
     try {
       const ticket = await mutateAsync(values)
       toast.success(t('tickets.create.createdToast'))
-      navigate(`/tickets/${ticket.id}`)
+      // A Super Admin's own session has no tenant bound, so navigating
+      // straight to another tenant's ticket detail page 404s (that page
+      // isn't cross-tenant-aware) — back to the list, which is, instead.
+      navigate(isSuperAdmin ? '/tickets' : `/tickets/${ticket.id}`)
     } catch (error) {
       setFormError(toApiError(error).message)
     }
@@ -50,6 +54,7 @@ export function TicketCreatePage() {
             formError={formError}
             onCancel={() => navigate(-1)}
             showClientSelector={isStaff}
+            showTenantSelector={isSuperAdmin}
           />
         </CardContent>
       </Card>

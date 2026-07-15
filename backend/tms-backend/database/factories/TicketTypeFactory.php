@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\Tenant;
 use App\Models\TicketType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -17,11 +16,11 @@ class TicketTypeFactory extends Factory
     public function definition(): array
     {
         return [
-            'tenant_id' => Tenant::factory(),
-            // Not fake()->unique(): the pool is only 5 words and uniqueness
-            // is per-tenant (DB constraint), not global — tests needing
-            // several distinct types for one tenant pass an explicit 'name'.
-            'name' => fake()->randomElement(['Bug', 'Feature Request', 'Support', 'Billing', 'Incident']),
+            // fake()->unique(): the name is unique platform-wide now (a
+            // single global catalog, not one per tenant — see TicketType's
+            // own docblock), so a small fixed word pool would collide
+            // across tests almost immediately.
+            'name' => ucwords(fake()->unique()->words(2, true)),
             'description' => fake()->sentence(),
             'is_active' => true,
         ];

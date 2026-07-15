@@ -23,9 +23,9 @@ class AssignAgentSkillsRequest extends ApiFormRequest
         return [
             // A full replace (sync) of the agent's qualified ticket types,
             // same "send the whole state" shape as AssignUserRolesRequest.
-            // Tenant-scoped automatically: RLS is already bound by the time
-            // this validates, so `exists` only ever matches this tenant's
-            // own ticket types (see StoreTicketRequest for the same note).
+            // ticket_types is a global catalog (see TicketType's own
+            // docblock), so `exists` deliberately isn't tenant-scoped —
+            // any ticket type is a valid skill for any agent.
             'ticket_type_ids' => ['required', 'array'],
             'ticket_type_ids.*' => ['uuid', 'exists:ticket_types,id'],
         ];

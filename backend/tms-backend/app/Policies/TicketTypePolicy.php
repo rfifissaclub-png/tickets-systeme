@@ -2,13 +2,20 @@
 
 namespace App\Policies;
 
+use App\Enums\RoleName;
 use App\Models\TicketType;
 use App\Models\User;
 
 /**
- * Visibility isn't a security boundary here — every tenant member needs to
- * see the available types to file a ticket at all, and RLS already confines
- * the list to their own tenant. Only mutation is permission-gated.
+ * Ticket types are a single platform-wide catalog (see TicketType's own
+ * docblock), not a per-tenant resource — every tenant member needs to see
+ * the available types to file a ticket at all, so viewing is never
+ * restricted. Mutation is checked directly against the Super Admin role,
+ * not a grantable permission — same reasoning as TenantPolicy's
+ * platform-wide operations: a "ticket_types.manage"-style permission could
+ * in principle be granted to a Tenant Admin later, which would let one
+ * tenant's admin rename or delete a category every other tenant also files
+ * tickets under. That must never be possible via a permission grant.
  */
 class TicketTypePolicy
 {
@@ -24,16 +31,16 @@ class TicketTypePolicy
 
     public function create(User $actor): bool
     {
-        return $actor->can('ticket_types.manage');
+        return $actor->hasRole(RoleName::SuperAdmin->value);
     }
 
     public function update(User $actor, TicketType $ticketType): bool
     {
-        return $actor->can('ticket_types.manage');
+        return $actor->hasRole(RoleName::SuperAdmin->value);
     }
 
     public function delete(User $actor, TicketType $ticketType): bool
     {
-        return $actor->can('ticket_types.manage');
+        return $actor->hasRole(RoleName::SuperAdmin->value);
     }
 }

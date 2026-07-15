@@ -7,14 +7,11 @@ use App\Http\Requests\TicketTypes\StoreTicketTypeRequest;
 use App\Http\Requests\TicketTypes\UpdateTicketTypeRequest;
 use App\Http\Resources\TicketTypeResource;
 use App\Models\TicketType;
-use App\Services\Tenancy\TenantContext;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
 class TicketTypeController extends Controller
 {
-    public function __construct(private readonly TenantContext $tenantContext) {}
-
     public function index(): JsonResponse
     {
         $this->authorize('viewAny', TicketType::class);
@@ -26,10 +23,7 @@ class TicketTypeController extends Controller
 
     public function store(StoreTicketTypeRequest $request): JsonResponse
     {
-        $ticketType = TicketType::query()->create([
-            'tenant_id' => $this->tenantContext->requireTenant(),
-            ...$request->validated(),
-        ]);
+        $ticketType = TicketType::query()->create($request->validated());
 
         return ApiResponse::success(new TicketTypeResource($ticketType), __('messages.ticket_types.created'), 201);
     }

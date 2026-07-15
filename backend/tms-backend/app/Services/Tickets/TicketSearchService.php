@@ -4,6 +4,7 @@ namespace App\Services\Tickets;
 
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\Tenancy\TenantContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -19,16 +20,29 @@ class TicketSearchService
     /** @var list<string> */
     private const SORTABLE = ['created_at', 'updated_at', 'priority', 'status'];
 
+    public function __construct(private readonly TenantContext $tenantContext) {}
+
+    /**
+     * A Super Admin has no tenant of their own — with no explicit tenant
+     * filter here to begin with (unlike the reports/pool services, this
+     * relies entirely on RLS), their request would otherwise just fail
+     * closed and silently return zero tickets rather than the
+     * platform-wide list tickets.viewAny already entitles them to.
+     */
     public function search(User $actor, Request $request): LengthAwarePaginator
     {
-        $query = Ticket::query()->with(['ticketType', 'client', 'agent']);
+        $run = function () use ($actor, $request) {
+            $query = Ticket::query()->with(['ticketType', 'client', 'agent']);
 
-        $this->applyOwnershipScope($query, $actor);
-        $this->applyFilters($query, $request);
-        $searching = $this->applySearch($query, $request);
-        $this->applySorting($query, $request, $searching);
+            $this->applyOwnershipScope($query, $actor);
+            $this->applyFilters($query, $request);
+            $searching = $this->applySearch($query, $request);
+            $this->applySorting($query, $request, $searching);
 
-        return $query->paginate(min((int) $request->query('per_page', 25), 100));
+            return $query->paginate(min((int) $request->query('per_page', 25), 100));
+        };
+
+        return $this->tenantContext->bound() ? $run() : $this->tenantContext->bypass('platform-wide ticket list (super admin)', $run);
     }
 
     private function applyOwnershipScope(Builder $query, User $actor): void

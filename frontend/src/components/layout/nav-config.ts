@@ -39,7 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'nav.ticketTypes',
     to: '/ticket-types',
     icon: TagsIcon,
-    roles: ['Tenant Admin', 'Super Admin'],
+    roles: ['Super Admin'],
   },
   {
     labelKey: 'nav.users',

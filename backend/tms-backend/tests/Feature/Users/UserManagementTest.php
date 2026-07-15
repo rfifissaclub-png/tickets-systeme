@@ -130,6 +130,26 @@ it('omits the workspace line from the welcome email for a platform-level (Super 
     );
 });
 
+it('lets a Super Admin list one tenant\'s users, with their roles correctly resolved', function () {
+    [$tenant, $tenantAdmin] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+
+    $superAdmin = createSuperAdmin();
+    $token = loginAs('', $superAdmin->email);
+
+    $response = $this->withToken($token)->getJson("/api/v1/users?tenant_id={$tenant->id}")->assertOk();
+
+    $listed = collect($response->json('data'))->firstWhere('id', $tenantAdmin->id);
+
+    // Spatie's team-scoped model_has_roles pivot is a separate mechanism
+    // from the RLS bypass a Super Admin's platform-wide listing needs —
+    // without also binding the filtered tenant's own team id, this comes
+    // back an empty array for every row despite each user genuinely
+    // holding a role.
+    expect($listed['roles'])->toBe([RoleName::TenantAdmin->value]);
+});
+
 it('rejects creating a user with more than one role at once', function () {
     [$tenant, $tenantAdmin] = createTenantWithUser();
     app(TenantContext::class)->set($tenant->id);

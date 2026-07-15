@@ -70,7 +70,7 @@ function createTicketFixture(array $ticketAttributes = []): array
 {
     return app(TenantContext::class)->bypass('test fixture setup', function () use ($ticketAttributes) {
         $tenant = Tenant::factory()->create();
-        $ticketType = TicketType::factory()->for($tenant)->create();
+        $ticketType = TicketType::factory()->create();
         $client = User::factory()->for($tenant)->create();
         $agent = User::factory()->for($tenant)->create();
 

@@ -29,6 +29,7 @@ return [
         'already_assigned' => 'Ce ticket a déjà été pris en charge par un autre agent.',
         'invalid_transition' => 'Impossible de faire passer un ticket de « :from » à « :to ».',
         'not_qualified' => "Vous n'êtes pas qualifié pour prendre ce type de ticket. Demandez à un administrateur de vous attribuer cette compétence.",
+        'client_tenant_mismatch' => "Ce client n'appartient pas à l'entité sélectionnée.",
     ],
 
     'ticket_types' => [
@@ -52,7 +53,6 @@ return [
         'skills_updated' => 'Compétences mises à jour.',
         'only_super_admin_grants_super_admin' => 'Seul un Super Admin peut accorder le rôle Super Admin.',
         'super_admin_role_requires_no_tenant' => "Le rôle Super Admin ne peut être accordé qu'à un compte de niveau plateforme, sans espace de travail.",
-        'skills_must_match_tenant' => "Un ou plusieurs types de tickets n'appartiennent pas à l'espace de travail de cet utilisateur.",
         'welcome_email_subject' => 'Votre compte TMS a été créé',
         'welcome_email_intro' => 'Un administrateur a créé un compte pour vous sur TMS.',
         'welcome_email_workspace' => 'Espace de travail : :workspace',

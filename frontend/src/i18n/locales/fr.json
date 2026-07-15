@@ -168,8 +168,11 @@
       "description": "Description",
       "client": "Client",
       "chooseClient": "Choisissez un client",
+      "tenant": "Entité",
+      "chooseTenant": "Choisissez une entité",
       "chooseTypeError": "Choisissez un type de ticket.",
       "chooseClientError": "Choisissez pour quel client est ce ticket.",
+      "chooseTenantError": "Choisissez pour quelle entité est ce ticket.",
       "subjectRequiredError": "Le sujet est requis.",
       "descriptionRequiredError": "La description est requise."
     }
@@ -248,7 +251,7 @@
   },
   "ticketTypes": {
     "title": "Types de tickets",
-    "subtitle": "Catégories sous lesquelles les tickets sont classés, et pour lesquelles les agents peuvent être qualifiés.",
+    "subtitle": "Un catalogue partagé par toutes les entités — les catégories sous lesquelles les tickets sont classés, et pour lesquelles les agents peuvent être qualifiés.",
     "newType": "Nouveau type",
     "editType": "Modifier le type de ticket",
     "form": {

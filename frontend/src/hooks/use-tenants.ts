@@ -16,11 +16,12 @@ export const tenantKeys = {
   list: (params: TenantListParams) => [...tenantKeys.lists(), params] as const,
 }
 
-export function useTenants(params: TenantListParams = {}) {
+export function useTenants(params: TenantListParams = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: tenantKeys.list(params),
     queryFn: () => fetchTenants(params),
     placeholderData: (previousData) => previousData,
+    enabled: options.enabled ?? true,
   })
 }
 

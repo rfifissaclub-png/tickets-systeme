@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
         $this->call(RoleAndPermissionSeeder::class);
 
         $this->seedMainCorporation();
+        $this->seedTicketTypeCatalog();
 
         if (app()->isProduction()) {
             return;
@@ -47,6 +48,22 @@ class DatabaseSeeder extends Seeder
                 ['name' => 'Main Corporation'],
             ),
         );
+    }
+
+    /**
+     * Matches the cahier des charges' own worked example (Support
+     * Informatique, Facturation, Ressources Humaines). A single
+     * platform-wide catalog (see TicketType's own docblock), seeded in
+     * every environment including production, the same way
+     * roles/permissions and Main Corporation are. firstOrCreate by name:
+     * re-running seeders against an already-seeded database must not throw
+     * on the now-global unique constraint.
+     */
+    private function seedTicketTypeCatalog(): void
+    {
+        foreach (['IT Support', 'Billing', 'Human Resources'] as $name) {
+            TicketType::query()->firstOrCreate(['name' => $name]);
+        }
     }
 
     /**
@@ -88,13 +105,9 @@ class DatabaseSeeder extends Seeder
         ]);
         $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
 
-        // Matches the cahier des charges' own worked example (Support
-        // Informatique, Facturation, Ressources Humaines) so a fresh demo
-        // tenant is immediately usable end-to-end, not an empty shell an
-        // admin has to configure from scratch before filing a first ticket.
-        $itSupport = TicketType::factory()->for($tenant)->create(['name' => 'IT Support']);
-        TicketType::factory()->for($tenant)->create(['name' => 'Billing']);
-        TicketType::factory()->for($tenant)->create(['name' => 'Human Resources']);
+        // Ticket types are the global catalog seedTicketTypeCatalog() just
+        // created, not this tenant's own — every tenant shares the same set.
+        $itSupport = TicketType::query()->where('name', 'IT Support')->firstOrFail();
 
         // A Support Agent qualified only for IT Support — demonstrates the
         // pool's skill-based filtering (see TicketPoolService::poolQuery())

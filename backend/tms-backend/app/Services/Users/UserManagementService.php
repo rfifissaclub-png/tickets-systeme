@@ -4,7 +4,6 @@ namespace App\Services\Users;
 
 use App\Enums\RoleName;
 use App\Models\Tenant;
-use App\Models\TicketType;
 use App\Models\User;
 use App\Notifications\UserAccountCreatedNotification;
 use App\Services\Tenancy\TenantContext;
@@ -34,13 +33,24 @@ class UserManagementService
             return User::query()->with('roles')->orderBy('name')->paginate($perPage);
         }
 
+        $query = fn () => User::query()
+            ->when($tenantIdFilter !== null, fn ($query) => $query->where('tenant_id', $tenantIdFilter))
+            ->with('roles')
+            ->orderBy('name')
+            ->paginate($perPage);
+
         return $this->tenantContext->bypass(
             'platform-wide user listing',
-            fn () => User::query()
-                ->when($tenantIdFilter !== null, fn ($query) => $query->where('tenant_id', $tenantIdFilter))
-                ->with('roles')
-                ->orderBy('name')
-                ->paginate($perPage),
+            // Spatie's "teams" feature scopes model_has_roles by
+            // PermissionsTeamId independently of the RLS bypass above —
+            // with a specific tenant filter, bind that tenant's own team so
+            // with('roles') actually resolves instead of coming back empty
+            // for every row (see withTeamContext's own docblock). No single
+            // team id could correctly scope a *mixed*-tenant listing, so
+            // this only helps the filtered case; an unfiltered
+            // platform-wide listing still shows no roles per row — a
+            // known, separate limitation.
+            fn () => $tenantIdFilter !== null ? $this->withTeamContext($tenantIdFilter, $query) : $query(),
         );
     }
 
@@ -167,22 +177,10 @@ class UserManagementService
     public function syncSkills(User $actor, User $target, array $ticketTypeIds): User
     {
         $sync = function () use ($target, $ticketTypeIds) {
-            // Belt-and-suspenders alongside AssignAgentSkillsRequest's own
-            // `exists:ticket_types,id` rule: that rule is RLS-scoped to
-            // whichever tenant validated the request, but a Super Admin
-            // actor's bypassed sync here must independently confirm every
-            // id actually belongs to the target's own tenant, not any
-            // tenant a Super Admin happens to also be able to see.
-            $validIds = TicketType::query()
-                ->where('tenant_id', $target->tenant_id)
-                ->whereIn('id', $ticketTypeIds)
-                ->pluck('id');
-
-            if ($validIds->count() !== count($ticketTypeIds)) {
-                throw ValidationException::withMessages([
-                    'ticket_type_ids' => [__('messages.users.skills_must_match_tenant')],
-                ]);
-            }
+            // No tenant-membership check needed here: ticket_types is a
+            // global catalog (see TicketType's own docblock), so every id
+            // AssignAgentSkillsRequest's `exists:ticket_types,id` already
+            // validated is a legitimate skill for any agent in any tenant.
 
             // sync()'s array-with-pivot-attributes form is required here,
             // not the plain id-list form: agent_skills carries its own

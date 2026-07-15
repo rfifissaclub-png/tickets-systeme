@@ -135,6 +135,45 @@ it('lets a Super Admin see ticket counts across all tenants', function () {
         ->and((int) $byTenant[$tenantB->id]['ticket_count'])->toBeGreaterThanOrEqual(2);
 });
 
+it('lets a Super Admin view the overview, by-agent, and trends reports aggregated across every tenant', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    [$tenantA, $ticketTypeA, $clientA, $agentA] = createTicketFixture();
+    [$tenantB, $ticketTypeB, $clientB, $agentB] = createTicketFixture();
+
+    // Deliberately bypass() rather than set() for both: TenantContext is a
+    // container singleton, so unlike two real, separate requests, a set()
+    // call here would leak into this same test's later Super Admin
+    // request below and make it look tenant-bound when it must not be.
+    app(TenantContext::class)->bypass(
+        'test fixture setup',
+        fn () => Ticket::factory()->for($tenantA)->assignedTo($agentA)->create(['ticket_type_id' => $ticketTypeA->id, 'client_id' => $clientA->id]),
+    );
+    app(TenantContext::class)->bypass(
+        'test fixture setup',
+        fn () => Ticket::factory()->for($tenantB)->assignedTo($agentB)->create(['ticket_type_id' => $ticketTypeB->id, 'client_id' => $clientB->id]),
+    );
+
+    $superAdmin = app(TenantContext::class)->bypass('test fixture setup', fn () => User::factory()->superAdmin()->create());
+    app(TenantContext::class)->bindPlatformTeam();
+    $superAdmin->assignRole(RoleName::SuperAdmin->value);
+
+    $token = loginAs('', $superAdmin->email);
+
+    // Before this fix, all three of these threw "No tenant is bound to
+    // the current request context" for a Super Admin — requireTenant() had
+    // no branch for the one role that genuinely has none.
+    $overview = $this->withToken($token)->getJson('/api/v1/reports/overview')->assertOk();
+    expect($overview->json('data.total_tickets'))->toBeGreaterThanOrEqual(2);
+
+    $byAgent = $this->withToken($token)->getJson('/api/v1/reports/tickets-by-agent')->assertOk();
+    expect(collect($byAgent->json('data'))->pluck('agent_id'))
+        ->toContain($agentA->id)
+        ->toContain($agentB->id);
+
+    $this->withToken($token)->getJson('/api/v1/reports/ticket-trends')->assertOk();
+});
+
 it('buckets ticket trends by day', function () {
     [$tenant, $ticketType, $client] = createTicketFixture();
 

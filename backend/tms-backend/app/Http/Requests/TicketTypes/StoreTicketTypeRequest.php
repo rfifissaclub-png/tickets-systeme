@@ -18,7 +18,11 @@ class StoreTicketTypeRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            // Unique platform-wide now (a single global catalog — see
+            // TicketType's own docblock), not per-tenant, so a plain
+            // `unique:ticket_types,name` is enough; no scoping column left
+            // to add a `->where(...)` clause for.
+            'name' => ['required', 'string', 'max:255', 'unique:ticket_types,name'],
             'description' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
         ];

@@ -27,7 +27,7 @@ it('lists only unassigned, Pending tickets in the pool', function () {
         'client_id' => $client->id,
     ]);
 
-    $poolIds = app(TicketPoolService::class)->poolQuery($agent)->pluck('id')->all();
+    $poolIds = app(TicketPoolService::class)->poolQuery($agent, 25)->pluck('id')->all();
 
     expect($poolIds)->toContain($pendingTicket->id)
         ->and($poolIds)->not->toContain($assignedTicket->id);
@@ -42,23 +42,19 @@ it('only shows a skill-gated agent pool tickets matching their qualified ticket 
     $agent->assignRole(RoleName::SupportAgent->value);
     $agent->refresh();
 
-    // A name outside TicketTypeFactory's 5-word random pool: $ticketType
-    // above got an unpinned random name from that same pool, and a
-    // same-tenant collision would trip the ticket_types (tenant_id, name)
-    // unique constraint — see the factory's own docblock on this.
-    $otherType = TicketType::factory()->for($tenant)->create(['name' => 'Distinct Other Type']);
+    $otherType = TicketType::factory()->create();
     $unqualifiedTicket = Ticket::factory()->for($tenant)->create([
         'ticket_type_id' => $otherType->id,
         'client_id' => $client->id,
     ]);
 
     // No skills assigned yet: fails closed, empty pool.
-    expect(app(TicketPoolService::class)->poolQuery($agent)->pluck('id')->all())->toBe([]);
+    expect(app(TicketPoolService::class)->poolQuery($agent, 25)->pluck('id')->all())->toBe([]);
 
     $agent->qualifiedTicketTypes()->attach($ticketType->id, ['tenant_id' => $tenant->id]);
     $agent->refresh();
 
-    $poolIds = app(TicketPoolService::class)->poolQuery($agent)->pluck('id')->all();
+    $poolIds = app(TicketPoolService::class)->poolQuery($agent, 25)->pluck('id')->all();
 
     expect($poolIds)->toContain($qualifiedTicket->id)
         ->and($poolIds)->not->toContain($unqualifiedTicket->id);
@@ -141,6 +137,24 @@ it('lets an authorized agent pull a ticket from the pool via the API', function 
         ->assertOk()
         ->assertJsonPath('data.agent.id', $agent->id)
         ->assertJsonPath('data.status', 'in_progress');
+});
+
+it('lets a Super Admin see and pull from the pool across every tenant', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    [$tenantA, $ticketTypeA, $clientA, , $ticketA] = createTicketFixture();
+    [$tenantB, $ticketTypeB, $clientB, , $ticketB] = createTicketFixture();
+
+    $superAdmin = createSuperAdmin();
+    $token = loginAs('', $superAdmin->email);
+
+    $response = $this->withToken($token)->getJson('/api/v1/ticket-pool')->assertOk();
+    $poolIds = collect($response->json('data'))->pluck('id');
+
+    expect($poolIds)->toContain($ticketA->id)->toContain($ticketB->id);
+
+    $pulled = $this->withToken($token)->postJson("/api/v1/ticket-pool/{$ticketA->id}/pull")->assertOk();
+    expect($pulled->json('data.agent.id'))->toBe($superAdmin->id);
 });
 
 it('returns 409 for a second API pull attempt on the same ticket', function () {

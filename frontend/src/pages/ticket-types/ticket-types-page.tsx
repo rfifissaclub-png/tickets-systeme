@@ -72,10 +72,11 @@ function TicketTypeFormFields({
 
 export function TicketTypesPage() {
   const { t } = useTranslation()
-  // Matches ticket_types.manage, held only by Tenant Admin (Super Admin
-  // bypasses all permission checks) — see RoleAndPermissionSeeder. Purely a
-  // UX gate: the API rejects these calls from anyone else regardless.
-  const canManageTicketTypes = useHasRole('Tenant Admin', 'Super Admin')
+  // Ticket types are a single platform-wide catalog shared by every
+  // tenant, not this tenant's own — see TicketTypePolicy, which checks the
+  // Super Admin role directly. Purely a UX gate: the API rejects these
+  // calls from anyone else regardless.
+  const canManageTicketTypes = useHasRole('Super Admin')
   const { data: ticketTypes, isLoading } = useTicketTypes()
   const { mutateAsync: create, isPending: creating } = useCreateTicketType()
   const [editing, setEditing] = useState<TicketType | null>(null)

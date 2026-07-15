@@ -14,6 +14,7 @@ use App\Services\Audit\AuditService;
 use App\Services\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TicketService
 {
@@ -24,25 +25,50 @@ class TicketService
     ) {}
 
     /**
-     * @param  array{ticket_type_id: string, client_id?: string, subject: string, description: string, priority?: string}  $data
+     * @param  array{ticket_type_id: string, tenant_id?: string, client_id?: string, subject: string, description: string, priority?: string}  $data
      */
     public function create(User $actor, array $data): Ticket
     {
+        // A Super Admin has no tenant of their own to fall back to — unlike
+        // every other actor, StoreTicketRequest requires them to name one
+        // explicitly (see its own docblock on why there's no `exists:`
+        // check backing it).
+        $isSuperAdmin = $actor->hasRole(RoleName::SuperAdmin->value);
+        $targetTenantId = $isSuperAdmin ? $data['tenant_id'] : $this->tenantContext->requireTenant();
+
         // A plain Client can only ever raise a ticket for themselves — the
         // broader "create tickets on behalf of any client" ability requires
         // the tickets.create *permission*, which Clients are deliberately
-        // not granted (see RoleAndPermissionSeeder).
+        // not granted (see RoleAndPermissionSeeder). A Super Admin has no
+        // client identity of their own either, so StoreTicketRequest
+        // requires them to name one explicitly too.
         $clientId = $actor->hasRole(RoleName::Client->value) ? $actor->id : ($data['client_id'] ?? $actor->id);
 
-        return Ticket::query()->create([
-            'tenant_id' => $this->tenantContext->requireTenant(),
-            'ticket_type_id' => $data['ticket_type_id'],
-            'client_id' => $clientId,
-            'subject' => $data['subject'],
-            'description' => $data['description'],
-            'priority' => $data['priority'] ?? 'medium',
-            'status' => TicketStatus::Pending,
-        ]);
+        $create = function () use ($isSuperAdmin, $targetTenantId, $clientId, $data) {
+            // Nothing else stops a Super Admin naming a tenant and a client
+            // that don't actually belong together — StoreTicketRequest's
+            // own `exists:users,id` check is skipped for them (RLS would
+            // block it regardless of correctness), so this is the one
+            // place left to catch the mismatch, now safely inside the
+            // bypass this lookup itself needs.
+            if ($isSuperAdmin && ! User::query()->where('id', $clientId)->where('tenant_id', $targetTenantId)->exists()) {
+                throw ValidationException::withMessages([
+                    'client_id' => [__('messages.tickets.client_tenant_mismatch')],
+                ]);
+            }
+
+            return Ticket::query()->create([
+                'tenant_id' => $targetTenantId,
+                'ticket_type_id' => $data['ticket_type_id'],
+                'client_id' => $clientId,
+                'subject' => $data['subject'],
+                'description' => $data['description'],
+                'priority' => $data['priority'] ?? 'medium',
+                'status' => TicketStatus::Pending,
+            ]);
+        };
+
+        return $isSuperAdmin ? $this->tenantContext->bypass('ticket creation (super admin)', $create) : $create();
     }
 
     /**

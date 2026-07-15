@@ -49,9 +49,14 @@ class RoleAndPermissionSeeder extends Seeder
             'users.viewAny', 'users.view', 'users.create', 'users.update', 'users.delete', 'users.manageRoles',
             'tenants.view', 'tenants.update',
             'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.update', 'tickets.delete',
-            'tickets.assign', 'tickets.viewInternal', 'ticket_types.manage', 'agent_skills.manage',
+            'tickets.assign', 'tickets.viewInternal', 'agent_skills.manage',
             'reports.view', 'audit_logs.view',
         ],
+        // Deliberately no ticket_types.manage: ticket types are a single
+        // platform-wide catalog, not this tenant's own — see
+        // TicketTypePolicy, which checks the Super Admin role directly
+        // rather than a grantable permission, same reasoning as
+        // tenants.manage below never being granted here either.
         RoleName::Manager->value => [
             'users.viewAny', 'users.view', 'users.update',
             'tickets.viewAny', 'tickets.view', 'tickets.create', 'tickets.update',

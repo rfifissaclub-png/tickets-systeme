@@ -7,18 +7,24 @@ use Database\Factories\TicketTypeFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * A single platform-wide catalog, not a per-tenant resource — every tenant
+ * files tickets against the same set of types (see TicketTypePolicy: only a
+ * Super Admin may create/update/delete one). agent_skills is the only
+ * genuinely tenant-scoped fact involving a ticket type ("this agent, in
+ * this tenant, is qualified for this type"), which is why that pivot still
+ * carries its own tenant_id even though this table no longer does.
+ */
 class TicketType extends Model
 {
     /** @use HasFactory<TicketTypeFactory> */
     use Auditable, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'tenant_id',
         'name',
         'description',
         'is_active',
@@ -29,14 +35,6 @@ class TicketType extends Model
         return [
             'is_active' => 'boolean',
         ];
-    }
-
-    /**
-     * @return BelongsTo<Tenant, $this>
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
     }
 
     /**

@@ -56,11 +56,7 @@ it('filters by comma-separated status and by ticket type', function () {
     app(TenantContext::class)->set($tenant->id);
     $client->assignRole(RoleName::Client->value);
 
-    // A name outside TicketTypeFactory's 5-word random pool: $ticketType
-    // above got an unpinned random name from that same pool, and a
-    // same-tenant collision would trip the ticket_types (tenant_id, name)
-    // unique constraint — see the factory's own docblock on this.
-    $otherType = TicketType::factory()->for($tenant)->create(['name' => 'Distinct Other Type']);
+    $otherType = TicketType::factory()->create();
 
     $pending = Ticket::factory()->for($tenant)->create([
         'ticket_type_id' => $ticketType->id,
@@ -114,6 +110,21 @@ it('filters unassigned tickets', function () {
     $ids = collect($response->json('data'))->pluck('id')->all();
 
     expect($ids)->toContain($unassigned->id)->not->toContain($assigned->id);
+});
+
+it('lets a Super Admin list tickets across every tenant', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    [, , , , $ticketA] = createTicketFixture(['subject' => 'Tenant A issue']);
+    [, , , , $ticketB] = createTicketFixture(['subject' => 'Tenant B issue']);
+
+    $superAdmin = createSuperAdmin();
+    $token = loginAs('', $superAdmin->email);
+
+    $response = $this->withToken($token)->getJson('/api/v1/tickets')->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+
+    expect($ids)->toContain($ticketA->id)->toContain($ticketB->id);
 });
 
 it('scopes a Client to only their own tickets even while searching', function () {

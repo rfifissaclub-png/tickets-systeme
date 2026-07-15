@@ -9,7 +9,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Tenancy\TenantContext;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
@@ -39,23 +39,37 @@ class TicketPoolService
      * different permission because "can see everything" and "can hand work
      * to others" are different capabilities here.
      *
-     * @return Builder<Ticket>
+     * A Super Admin has no tenant of their own — rather than reject them
+     * (they do hold tickets.assign, same as a Manager/Tenant Admin), an
+     * unbound context sees the pool aggregated across every tenant instead
+     * of one. Executed here, inside the (possible) bypass, rather than
+     * returning a lazy Builder for the controller to paginate: the RLS
+     * bypass this needs is only active for the duration of this call, not
+     * however long the caller takes to eventually run the query.
      */
-    public function poolQuery(User $agent): Builder
+    public function poolQuery(User $agent, int $perPage): LengthAwarePaginator
     {
-        $query = Ticket::query()
-            ->where('tenant_id', $this->tenantContext->requireTenant())
-            ->where('status', TicketStatus::Pending->value)
-            ->whereNull('agent_id');
+        $tenantId = $this->tenantContext->id();
 
-        if ($this->isSkillGated($agent)) {
-            // No rows configured means no rows visible — fails closed, same
-            // as every other RLS/permission boundary in this app, rather
-            // than defaulting a freshly-created agent to "sees everything".
-            $query->whereIn('ticket_type_id', $this->qualifiedTicketTypeIds($agent));
-        }
+        $build = function () use ($agent, $tenantId, $perPage) {
+            $query = Ticket::query()
+                ->when($tenantId !== null, fn ($q) => $q->where('tenant_id', $tenantId))
+                ->where('status', TicketStatus::Pending->value)
+                ->whereNull('agent_id')
+                ->with(['ticketType', 'client']);
 
-        return $query;
+            if ($this->isSkillGated($agent)) {
+                // No rows configured means no rows visible — fails closed,
+                // same as every other RLS/permission boundary in this app,
+                // rather than defaulting a freshly-created agent to "sees
+                // everything".
+                $query->whereIn('ticket_type_id', $this->qualifiedTicketTypeIds($agent));
+            }
+
+            return $query->orderBy('created_at')->paginate($perPage);
+        };
+
+        return $tenantId !== null ? $build() : $this->tenantContext->bypass('platform-wide ticket pool (super admin)', $build);
     }
 
     /**
@@ -70,12 +84,24 @@ class TicketPoolService
      * listing: pull() takes a raw ticket id, so a skill-gated agent guessing
      * or replaying an id they saw before losing a qualification must still
      * be rejected, not just steered away by what the listing shows them.
+     *
+     * Same Super Admin handling as poolQuery(): an unbound context may pull
+     * any tenant's pending ticket, not just one it happens to match.
      */
     public function pull(string $ticketId, User $agent): Ticket
     {
-        return DB::transaction(function () use ($ticketId, $agent) {
+        $tenantId = $this->tenantContext->id();
+
+        $run = fn () => $this->pullWithinTransaction($ticketId, $agent, $tenantId);
+
+        return $tenantId !== null ? $run() : $this->tenantContext->bypass('platform-wide ticket pull (super admin)', $run);
+    }
+
+    private function pullWithinTransaction(string $ticketId, User $agent, ?string $tenantId): Ticket
+    {
+        return DB::transaction(function () use ($ticketId, $agent, $tenantId) {
             $ticket = Ticket::query()
-                ->where('tenant_id', $this->tenantContext->requireTenant())
+                ->when($tenantId !== null, fn ($q) => $q->where('tenant_id', $tenantId))
                 ->lockForUpdate()
                 ->find($ticketId);
 

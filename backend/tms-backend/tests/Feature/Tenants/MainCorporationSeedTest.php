@@ -54,7 +54,7 @@ it('is a fully functional tenant: an unaffiliated client can log in and create a
 
     app(TenantContext::class)->set($mainCorp->id);
 
-    $ticketType = TicketType::factory()->for($mainCorp)->create(['name' => 'General Inquiry']);
+    $ticketType = TicketType::factory()->create(['name' => 'General Inquiry']);
     $client = User::factory()->for($mainCorp)->create();
     $client->assignRole(RoleName::Client->value);
 
