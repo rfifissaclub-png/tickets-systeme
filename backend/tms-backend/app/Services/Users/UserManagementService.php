@@ -35,7 +35,6 @@ class UserManagementService
 
         $query = fn () => User::query()
             ->when($tenantIdFilter !== null, fn ($query) => $query->where('tenant_id', $tenantIdFilter))
-            ->with('roles')
             ->orderBy('name')
             ->paginate($perPage);
 
@@ -43,14 +42,27 @@ class UserManagementService
             'platform-wide user listing',
             // Spatie's "teams" feature scopes model_has_roles by
             // PermissionsTeamId independently of the RLS bypass above —
-            // with a specific tenant filter, bind that tenant's own team so
-            // with('roles') actually resolves instead of coming back empty
-            // for every row (see withTeamContext's own docblock). No single
-            // team id could correctly scope a *mixed*-tenant listing, so
-            // this only helps the filtered case; an unfiltered
-            // platform-wide listing still shows no roles per row — a
-            // known, separate limitation.
-            fn () => $tenantIdFilter !== null ? $this->withTeamContext($tenantIdFilter, $query) : $query(),
+            // with('roles') here would come back empty for every row
+            // without binding it explicitly (see withTeamContext's own
+            // docblock). A tenant filter lets every row share one team;
+            // without one (every tenant at once), no single team id can
+            // correctly scope a mixed-tenant listing in one eager-load, so
+            // each row's own tenant is bound individually instead — more
+            // queries, but correct regardless of how many different
+            // tenants happen to be on the page.
+            function () use ($query, $tenantIdFilter) {
+                $users = $query();
+
+                if ($tenantIdFilter !== null) {
+                    $this->withTeamContext($tenantIdFilter, fn () => $users->load('roles'));
+                } else {
+                    foreach ($users as $user) {
+                        $this->withTeamContext($user->tenant_id, fn () => $user->load('roles'));
+                    }
+                }
+
+                return $users;
+            },
         );
     }
 
@@ -62,7 +74,16 @@ class UserManagementService
 
         return $this->tenantContext->bypass(
             'user lookup (super admin)',
-            fn () => User::query()->with(['roles', 'qualifiedTicketTypes'])->findOrFail($userId),
+            function () use ($userId) {
+                $user = User::query()->with('qualifiedTicketTypes')->findOrFail($userId);
+
+                // See paginate()'s own comment: roles() is team-scoped by
+                // Spatie independently of the RLS bypass above — bind the
+                // target's own tenant, not the acting Super Admin's.
+                $this->withTeamContext($user->tenant_id, fn () => $user->load('roles'));
+
+                return $user;
+            },
         );
     }
 
@@ -112,9 +133,19 @@ class UserManagementService
             // own docblock for why mail-only).
             $user->notify(new UserAccountCreatedNotification($data['email'], $data['password'], $tenantSlug));
 
-            if ($roles !== []) {
-                $this->withTeamContext($targetTenantId, fn () => $user->syncRoles($roles));
-            }
+            // Loaded here, inside the correct team context, regardless of
+            // whether $roles is empty: UserController::store() serializes
+            // this returned model directly (no further ->load('roles') of
+            // its own) — doing that afterward, once this bypass/team
+            // context has already ended, would silently come back empty
+            // for a Super Admin (see paginate()'s own comment on why).
+            $this->withTeamContext($targetTenantId, function () use ($user, $roles) {
+                if ($roles !== []) {
+                    $user->syncRoles($roles);
+                }
+
+                $user->load('roles');
+            });
 
             return $user;
         };
@@ -137,6 +168,11 @@ class UserManagementService
             }
 
             $target->fill($data)->save();
+
+            // Same reasoning as create(): UserController::update()
+            // serializes this returned model directly, and roles() is
+            // team-scoped by Spatie independently of the bypass above.
+            $this->withTeamContext($target->tenant_id, fn () => $target->load('roles'));
 
             return $target;
         };
@@ -162,13 +198,21 @@ class UserManagementService
     {
         $this->assertRoleGrantAllowed($roles, $target->tenant_id);
 
-        $sync = fn () => $this->withTeamContext($target->tenant_id, fn () => $target->syncRoles($roles));
+        // .load('roles') joins syncRoles() inside the same withTeamContext()
+        // call, not after: UserController::(store|update)() already showed
+        // this exact class of bug (roles() is team-scoped by Spatie
+        // independently of the RLS bypass), and this endpoint returns the
+        // model directly the same way.
+        $sync = fn () => $this->withTeamContext($target->tenant_id, function () use ($target, $roles) {
+            $target->syncRoles($roles);
+            $target->load('roles');
+        });
 
         $actor->hasRole(RoleName::SuperAdmin->value)
             ? $this->tenantContext->bypass('user role sync (super admin)', $sync)
             : $sync();
 
-        return $target->load('roles');
+        return $target;
     }
 
     /**

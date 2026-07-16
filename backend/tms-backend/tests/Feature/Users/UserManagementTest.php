@@ -150,6 +150,73 @@ it('lets a Super Admin list one tenant\'s users, with their roles correctly reso
     expect($listed['roles'])->toBe([RoleName::TenantAdmin->value]);
 });
 
+it('lets a Super Admin list users across every tenant at once, with each row\'s own roles resolved', function () {
+    [$tenantA, $adminA] = createTenantWithUser();
+    app(TenantContext::class)->set($tenantA->id);
+    $adminA->assignRole(RoleName::TenantAdmin->value);
+
+    [$tenantB, $adminB] = createTenantWithUser();
+    app(TenantContext::class)->set($tenantB->id);
+    $adminB->assignRole(RoleName::Manager->value);
+
+    $superAdmin = createSuperAdmin();
+    $token = loginAs('', $superAdmin->email);
+
+    $response = $this->withToken($token)->getJson('/api/v1/users?per_page=100')->assertOk();
+    $byId = collect($response->json('data'))->keyBy('id');
+
+    expect($byId[$adminA->id]['roles'])->toBe([RoleName::TenantAdmin->value])
+        ->and($byId[$adminB->id]['roles'])->toBe([RoleName::Manager->value]);
+});
+
+it('lets a Super Admin create a user in another tenant with the role correctly reflected in the response', function () {
+    [$tenant] = createTenantWithUser();
+    $superAdmin = createSuperAdmin();
+    $token = loginAs('', $superAdmin->email);
+
+    $response = $this->withToken($token)->postJson('/api/v1/users', [
+        'tenant_id' => $tenant->id,
+        'name' => 'Cross Tenant Agent',
+        'email' => 'cross-tenant-agent@example.com',
+        'password' => 'a-strong-password',
+        'roles' => [RoleName::SupportAgent->value],
+    ])->assertCreated();
+
+    expect($response->json('data.roles'))->toBe([RoleName::SupportAgent->value]);
+});
+
+it('lets a Super Admin view and update a cross-tenant user with roles correctly reflected', function () {
+    [$tenant, $target] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $target->assignRole(RoleName::SupportAgent->value);
+
+    $superAdmin = createSuperAdmin();
+    $token = loginAs('', $superAdmin->email);
+
+    $this->withToken($token)->getJson("/api/v1/users/{$target->id}")
+        ->assertOk()
+        ->assertJsonPath('data.roles', [RoleName::SupportAgent->value]);
+
+    $this->withToken($token)->patchJson("/api/v1/users/{$target->id}", ['name' => 'Renamed By Super Admin'])
+        ->assertOk()
+        ->assertJsonPath('data.roles', [RoleName::SupportAgent->value])
+        ->assertJsonPath('data.name', 'Renamed By Super Admin');
+});
+
+it('lets a Super Admin sync roles for a cross-tenant user with the response reflecting the change', function () {
+    [$tenant, $target] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $target->assignRole(RoleName::SupportAgent->value);
+
+    $superAdmin = createSuperAdmin();
+    $token = loginAs('', $superAdmin->email);
+
+    $this->withToken($token)
+        ->patchJson("/api/v1/users/{$target->id}/roles", ['roles' => [RoleName::Manager->value]])
+        ->assertOk()
+        ->assertJsonPath('data.roles', [RoleName::Manager->value]);
+});
+
 it('rejects creating a user with more than one role at once', function () {
     [$tenant, $tenantAdmin] = createTenantWithUser();
     app(TenantContext::class)->set($tenant->id);

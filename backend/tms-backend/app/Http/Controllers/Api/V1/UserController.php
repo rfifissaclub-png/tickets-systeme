@@ -39,9 +39,13 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request): JsonResponse
     {
+        // Not ->load('roles') here: UserManagementService::create() already
+        // does, inside the Spatie team context its own bypass needs (see
+        // its own comment) — reloading afterward, outside that context,
+        // would silently wipe it back to empty for a Super Admin.
         $user = $this->userService->create($request->user(), $request->validated());
 
-        return ApiResponse::success(new UserResource($user->load('roles')), __('messages.users.created'), 201);
+        return ApiResponse::success(new UserResource($user), __('messages.users.created'), 201);
     }
 
     public function show(Request $request, string $user): JsonResponse
@@ -59,9 +63,10 @@ class UserController extends Controller
 
         $this->authorize('update', $model);
 
+        // Not ->load('roles') here — same reasoning as store().
         $model = $this->userService->update($request->user(), $model, $request->validated());
 
-        return ApiResponse::success(new UserResource($model->load('roles')), __('messages.users.updated'));
+        return ApiResponse::success(new UserResource($model), __('messages.users.updated'));
     }
 
     public function destroy(Request $request, string $user): JsonResponse
