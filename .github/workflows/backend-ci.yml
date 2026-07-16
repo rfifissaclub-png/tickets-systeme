@@ -78,6 +78,8 @@ jobs:
           DB_DATABASE: tms_testing
           DB_USERNAME: tms
           DB_PASSWORD: secret
+          REDIS_CLIENT: predis
+          REDIS_HOST: 127.0.0.1
 
       - name: Run Pest
         run: vendor/bin/pest --ci
