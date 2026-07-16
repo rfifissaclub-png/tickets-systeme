@@ -83,6 +83,17 @@ class TicketPolicy
     }
 
     /**
+     * Class-level counterpart to assign() (same shape as viewAny()) for the
+     * agent-workload endpoint, which has no single ticket to check
+     * read-only status against — it exists to help pick who a ticket
+     * *will* be assigned to, before one has been chosen.
+     */
+    public function assignAny(User $actor): bool
+    {
+        return $actor->can('tickets.assign');
+    }
+
+    /**
      * Beyond the blanket tickets.pull permission, someone who can't also
      * assign tickets to *other* people (Manager/Tenant Admin) is a
      * front-line agent restricted to the ticket types they're declared

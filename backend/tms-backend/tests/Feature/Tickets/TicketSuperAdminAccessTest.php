@@ -81,11 +81,14 @@ it('lets a Super Admin transition a ticket\'s status in any tenant', function ()
 });
 
 it('lets a Super Admin assign a ticket to an agent belonging to the same tenant', function () {
-    [$tenant, , , , $ticket] = createTicketFixture(['agent_id' => null]);
+    [$tenant, $ticketType, , , $ticket] = createTicketFixture(['agent_id' => null]);
 
-    $agent = app(TenantContext::class)->bypass('test fixture setup', function () use ($tenant) {
+    $agent = app(TenantContext::class)->bypass('test fixture setup', function () use ($tenant, $ticketType) {
         $agent = User::factory()->for($tenant)->create();
         assignRoleWithinTenant($agent, RoleName::SupportAgent->value, $tenant->id);
+        // A plain Support Agent is skill-gated by TicketService::assign()
+        // too, not just the pool — qualify them for this ticket's type.
+        $agent->qualifiedTicketTypes()->attach($ticketType->id, ['tenant_id' => $tenant->id]);
 
         return $agent;
     });

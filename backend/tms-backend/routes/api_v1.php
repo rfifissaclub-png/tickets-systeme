@@ -64,6 +64,7 @@ Route::middleware(['auth.prime', 'auth:sanctum', 'tenant.context'])->group(funct
     Route::delete('/ticket-types/{ticketType}', [TicketTypeController::class, 'destroy'])->name('ticket-types.destroy');
 
     Route::get('/ticket-pool', [TicketPoolController::class, 'index'])->name('ticket-pool.index');
+    Route::get('/ticket-pool/agents', [TicketPoolController::class, 'agents'])->name('ticket-pool.agents');
     Route::post('/ticket-pool/{ticket}/pull', [TicketPoolController::class, 'pull'])->name('ticket-pool.pull');
 
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');

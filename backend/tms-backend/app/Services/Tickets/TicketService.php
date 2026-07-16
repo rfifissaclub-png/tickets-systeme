@@ -141,16 +141,19 @@ class TicketService
         // here instead, the one place that runs after the cross-tenant
         // bypass TicketAssignmentController wraps this in.
         //
-        // withTeam($agent->tenant_id, ...): hasAnyRole() is itself
-        // team-scoped (Spatie's "teams" feature), independent of the RLS
-        // bypass above — without binding the *agent's own* team here, this
-        // would check against whichever team the acting request happens to
-        // be bound to (the Super Admin's own platform team, not the
-        // agent's), finding no matching role row for a genuinely valid
+        // withTeam($agent->tenant_id, ...): hasAnyRole()/can() are
+        // themselves team-scoped (Spatie's "teams" feature), independent of
+        // the RLS bypass above — without binding the *agent's own* team
+        // here, this would check against whichever team the acting request
+        // happens to be bound to (the Super Admin's own platform team, not
+        // the agent's), finding no matching role row for a genuinely valid
         // agent and rejecting them incorrectly.
-        $isAssignable = $this->tenantContext->withTeam(
+        [$isAssignable, $isSkillGated] = $this->tenantContext->withTeam(
             $agent->tenant_id,
-            fn () => $agent->hasAnyRole([RoleName::SupportAgent->value, RoleName::Manager->value, RoleName::TenantAdmin->value]),
+            fn () => [
+                $agent->hasAnyRole([RoleName::SupportAgent->value, RoleName::Manager->value, RoleName::TenantAdmin->value]),
+                ! $agent->can('tickets.assign'),
+            ],
         );
 
         if (! $isAssignable) {
@@ -162,6 +165,22 @@ class TicketService
         if ($agent->tenant_id !== $ticket->tenant_id) {
             throw ValidationException::withMessages([
                 'agent_id' => [__('messages.tickets.agent_tenant_mismatch')],
+            ]);
+        }
+
+        // Same "Réservoir filtré par compétences" rule TicketPoolService
+        // enforces for self-service pulling (see its own isSkillGated()) —
+        // a Manager/Tenant Admin manually handing a ticket to someone else
+        // must respect the same skill boundary, or agent_skills becomes
+        // meaningless the moment anyone with tickets.assign starts
+        // reassigning by hand instead of letting agents pull for
+        // themselves. A target who can assign tickets themselves
+        // (Manager/Tenant Admin) is exempt, same exemption isSkillGated()
+        // grants — supervisory roles aren't tracked per-type the way
+        // front-line agents are.
+        if ($isSkillGated && ! $agent->qualifiedTicketTypes()->where('ticket_types.id', $ticket->ticket_type_id)->exists()) {
+            throw ValidationException::withMessages([
+                'agent_id' => [__('messages.tickets.agent_not_qualified')],
             ]);
         }
 

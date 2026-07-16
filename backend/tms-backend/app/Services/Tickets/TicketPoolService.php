@@ -2,6 +2,7 @@
 
 namespace App\Services\Tickets;
 
+use App\Enums\RoleName;
 use App\Enums\TicketStatus;
 use App\Exceptions\TicketAlreadyAssignedException;
 use App\Exceptions\TicketNotQualifiedException;
@@ -11,7 +12,9 @@ use App\Services\Audit\AuditService;
 use App\Services\Tenancy\TenantContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Pool → Agent chooses ticket → Database Lock → Assignment → My Desk.
@@ -125,6 +128,69 @@ class TicketPoolService
 
             return $ticket;
         });
+    }
+
+    /**
+     * Per-agent ticket workload for a tenant — the cahier des charges'
+     * "bucket par agent": how many active (not yet Resolved/Closed) tickets
+     * each assignable user already carries, and, when $ticketTypeId is
+     * given, whether they hold the matching agent_skills qualification —
+     * lets a Manager/Tenant Admin pick who to (re)assign a ticket to before
+     * TicketService::assign() enforces the same qualification rule.
+     *
+     * A Super Admin has no tenant of their own, so $tenantIdFilter is
+     * required for them (there's no single "current tenant" to default to,
+     * and a workload listing spanning every tenant at once would mix
+     * unrelated agents together for no actionable reason — unlike
+     * UserManagementService::paginate(), nothing here is usefully served by
+     * an unfiltered cross-tenant view).
+     *
+     * @return Collection<int, array{id: string, name: string, active_ticket_count: int, qualified: ?bool}>
+     */
+    public function agentWorkload(User $actor, ?string $tenantIdFilter, ?string $ticketTypeId): Collection
+    {
+        $isSuperAdmin = $actor->hasRole(RoleName::SuperAdmin->value);
+        $tenantId = $isSuperAdmin ? $tenantIdFilter : $this->tenantContext->requireTenant();
+
+        if ($tenantId === null) {
+            throw ValidationException::withMessages([
+                'tenant_id' => [__('messages.tickets.tenant_id_required_for_workload')],
+            ]);
+        }
+
+        // withTeam(), even for a non-Super-Admin actor already bound to
+        // this same tenant: roles()/qualifiedTicketTypes() are resolved
+        // per-row below independently of whatever team happens to already
+        // be bound, so binding it explicitly here keeps this method correct
+        // regardless of caller — the same reasoning as every other cross-
+        // tenant-capable method in this class.
+        $build = fn () => $this->tenantContext->withTeam($tenantId, function () use ($tenantId, $ticketTypeId) {
+            $agents = User::query()
+                ->where('tenant_id', $tenantId)
+                ->whereHas('roles', fn ($query) => $query->whereIn('name', [
+                    RoleName::SupportAgent->value,
+                    RoleName::Manager->value,
+                    RoleName::TenantAdmin->value,
+                ]))
+                ->withCount(['assignedTickets as active_ticket_count' => fn ($query) => $query->whereNotIn(
+                    'status',
+                    [TicketStatus::Resolved->value, TicketStatus::Closed->value],
+                )])
+                ->orderBy('name')
+                ->get();
+
+            return $agents->map(fn (User $agent) => [
+                'id' => $agent->id,
+                'name' => $agent->name,
+                'active_ticket_count' => $agent->active_ticket_count,
+                'qualified' => $ticketTypeId === null ? null : (
+                    ! $this->isSkillGated($agent)
+                    || $agent->qualifiedTicketTypes()->where('ticket_types.id', $ticketTypeId)->exists()
+                ),
+            ]);
+        });
+
+        return $this->tenantContext->runScoped('agent workload listing (super admin)', $build);
     }
 
     private function isSkillGated(User $agent): bool

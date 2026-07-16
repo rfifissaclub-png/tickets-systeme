@@ -35,6 +35,19 @@ class TicketPoolController extends Controller
         );
     }
 
+    public function agents(Request $request): JsonResponse
+    {
+        $this->authorize('assignAny', Ticket::class);
+
+        $agents = $this->poolService->agentWorkload(
+            $request->user(),
+            $request->query('tenant_id'),
+            $request->query('ticket_type_id'),
+        );
+
+        return ApiResponse::success(data: $agents);
+    }
+
     public function pull(Request $request, string $ticket): JsonResponse
     {
         // Not route-model-bound on purpose: pull() takes the raw id and does

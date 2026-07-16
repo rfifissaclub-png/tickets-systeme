@@ -32,6 +32,8 @@ return [
         'client_tenant_mismatch' => 'This client does not belong to the selected entity.',
         'agent_not_assignable' => 'The selected user is not an assignable agent.',
         'agent_tenant_mismatch' => 'The selected agent does not belong to this ticket\'s entity.',
+        'agent_not_qualified' => 'The selected agent is not qualified for this ticket\'s type. Grant them the matching skill first, or choose a qualified agent.',
+        'tenant_id_required_for_workload' => 'An entity is required to view agent workload.',
     ],
 
     'ticket_types' => [
@@ -55,6 +57,8 @@ return [
         'skills_updated' => 'Skills updated.',
         'only_super_admin_grants_super_admin' => 'Only a Super Admin may grant the Super Admin role.',
         'super_admin_role_requires_no_tenant' => 'The Super Admin role can only be granted to a platform-level account with no tenant.',
+        'has_active_tickets_as_client' => 'This user cannot be deactivated: they still have an open ticket. Close or resolve it first.',
+        'has_active_tickets_as_agent' => 'This user cannot be deactivated: they are still assigned to an open ticket. Reassign it first.',
         'welcome_email_subject' => 'Your TMS account has been created',
         'welcome_email_intro' => 'An administrator has created an account for you on TMS.',
         'welcome_email_workspace' => 'Workspace: :workspace',

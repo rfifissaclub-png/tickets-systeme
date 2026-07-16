@@ -38,7 +38,17 @@ export function TicketAssignSelect({
       onValueChange={(agentId) =>
         mutate(agentId, {
           onSuccess: () => toast.success(t('tickets.detail.assignedToast')),
-          onError: (error) => toast.error(toApiError(error).message),
+          // firstError(), not the generic top-level message: the backend's
+          // validation_failed message is always the same generic string
+          // (see bootstrap/app.php's ValidationException render callback),
+          // while the specific reason — not this tenant's agent, wrong
+          // role, or (see TicketService::assign()) missing the ticket
+          // type's skill — lives in errors.agent_id and is what actually
+          // tells the admin what to fix.
+          onError: (error) => {
+            const apiError = toApiError(error)
+            toast.error(apiError.firstError() ?? apiError.message)
+          },
         })
       }
     >

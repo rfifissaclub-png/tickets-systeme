@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -87,6 +88,19 @@ class User extends Authenticatable implements MustVerifyEmail
     public function qualifiedTicketTypes(): BelongsToMany
     {
         return $this->belongsToMany(TicketType::class, 'agent_skills')->withTimestamps();
+    }
+
+    /**
+     * Tickets currently (or previously) assigned to this user as agent —
+     * used for the agent-workload view (TicketPoolService::agentWorkload())
+     * and to check for a still-active ticket before allowing deletion (see
+     * UserManagementService::assertNoActiveTickets()).
+     *
+     * @return HasMany<Ticket, $this>
+     */
+    public function assignedTickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'agent_id');
     }
 
     /**

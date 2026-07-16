@@ -3,7 +3,9 @@
 namespace App\Services\Users;
 
 use App\Enums\RoleName;
+use App\Enums\TicketStatus;
 use App\Models\Tenant;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\UserAccountCreatedNotification;
 use App\Services\Tenancy\TenantContext;
@@ -183,12 +185,47 @@ class UserManagementService
     public function delete(User $actor, User $target): void
     {
         $delete = function () use ($target) {
+            $this->assertNoActiveTickets($target);
             $target->delete();
         };
 
         $actor->hasRole(RoleName::SuperAdmin->value)
             ? $this->tenantContext->bypass('user deactivation (super admin)', $delete)
             : $delete();
+    }
+
+    /**
+     * Deactivating (soft-deleting) a user does not touch their tickets at
+     * all — User::delete() never reaches the `tickets.client_id`/`agent_id`
+     * foreign keys' restrictOnDelete()/nullOnDelete() behavior, since those
+     * only fire on a genuine hard delete. Left unchecked, a deactivated
+     * agent's still-open tickets would sit assigned to someone who can no
+     * longer act on them (or log in at all), invisible to everyone until
+     * someone happens to notice; a deactivated client's open ticket would
+     * lose the one person who can supply the info needed to close it.
+     * Blocking outright (rather than silently unassigning/reopening
+     * something for the caller) forces the reassignment/closure to happen
+     * as its own deliberate, visible step first — see TicketService::assign()
+     * (reassign to someone else) or unassign() (send back to the pool).
+     */
+    private function assertNoActiveTickets(User $target): void
+    {
+        $activeStatuses = fn ($query) => $query->whereNotIn('status', [
+            TicketStatus::Resolved->value,
+            TicketStatus::Closed->value,
+        ]);
+
+        if (Ticket::query()->where('client_id', $target->id)->tap($activeStatuses)->exists()) {
+            throw ValidationException::withMessages([
+                'user' => [__('messages.users.has_active_tickets_as_client')],
+            ]);
+        }
+
+        if (Ticket::query()->where('agent_id', $target->id)->tap($activeStatuses)->exists()) {
+            throw ValidationException::withMessages([
+                'user' => [__('messages.users.has_active_tickets_as_agent')],
+            ]);
+        }
     }
 
     /**

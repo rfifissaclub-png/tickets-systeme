@@ -32,6 +32,8 @@ return [
         'client_tenant_mismatch' => "Ce client n'appartient pas à l'entité sélectionnée.",
         'agent_not_assignable' => "L'utilisateur sélectionné n'est pas un agent assignable.",
         'agent_tenant_mismatch' => "L'agent sélectionné n'appartient pas à l'entité de ce ticket.",
+        'agent_not_qualified' => "L'agent sélectionné n'est pas qualifié pour le type de ce ticket. Attribuez-lui d'abord la compétence requise, ou choisissez un agent qualifié.",
+        'tenant_id_required_for_workload' => 'Une entité est requise pour consulter la charge de travail des agents.',
     ],
 
     'ticket_types' => [
@@ -55,6 +57,8 @@ return [
         'skills_updated' => 'Compétences mises à jour.',
         'only_super_admin_grants_super_admin' => 'Seul un Super Admin peut accorder le rôle Super Admin.',
         'super_admin_role_requires_no_tenant' => "Le rôle Super Admin ne peut être accordé qu'à un compte de niveau plateforme, sans espace de travail.",
+        'has_active_tickets_as_client' => "Impossible de désactiver cet utilisateur : il a encore un ticket ouvert. Fermez-le ou résolvez-le d'abord.",
+        'has_active_tickets_as_agent' => "Impossible de désactiver cet utilisateur : il est encore assigné à un ticket ouvert. Réaffectez-le d'abord.",
         'welcome_email_subject' => 'Votre compte TMS a été créé',
         'welcome_email_intro' => 'Un administrateur a créé un compte pour vous sur TMS.',
         'welcome_email_workspace' => 'Espace de travail : :workspace',

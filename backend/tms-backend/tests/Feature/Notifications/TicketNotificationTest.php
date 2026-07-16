@@ -17,10 +17,14 @@ it('notifies the agent when a manager directly assigns a ticket', function () {
     $this->seed(RoleAndPermissionSeeder::class);
     NotificationFacade::fake();
 
-    [$tenant, , , $agent, $ticket] = createTicketFixture();
+    [$tenant, $ticketType, , $agent, $ticket] = createTicketFixture();
 
     app(TenantContext::class)->set($tenant->id);
     $agent->assignRole(RoleName::SupportAgent->value);
+    // A plain Support Agent is skill-gated (fails closed) by
+    // TicketService::assign() too, not just the pool — qualify them for
+    // this ticket's type first, same as this file's own pool-pull fixture.
+    $agent->qualifiedTicketTypes()->attach($ticketType->id, ['tenant_id' => $tenant->id]);
 
     app(TicketService::class)->assign($ticket, $agent);
 

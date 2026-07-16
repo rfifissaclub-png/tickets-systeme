@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\RoleName;
+use App\Enums\TicketStatus;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\UserAccountCreatedNotification;
 use App\Services\Tenancy\TenantContext;
@@ -307,4 +309,65 @@ it('prevents a Tenant Admin from managing users in another tenant', function () 
     $token = loginAs($tenant->slug, $tenantAdmin->email);
 
     $this->withToken($token)->getJson("/api/v1/users/{$otherUser->id}")->assertNotFound();
+});
+
+it('blocks deleting a client who still has an open ticket', function () {
+    [$tenant, $tenantAdmin] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+
+    $client = User::factory()->for($tenant)->create();
+    $client->assignRole(RoleName::Client->value);
+    Ticket::factory()->for($tenant)->create(['client_id' => $client->id, 'status' => TicketStatus::Pending]);
+
+    $token = loginAs($tenant->slug, $tenantAdmin->email);
+
+    $this->withToken($token)->deleteJson("/api/v1/users/{$client->id}")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('user');
+
+    expect($client->fresh()->trashed())->toBeFalse();
+});
+
+it('blocks deleting an agent who is still assigned to an open ticket', function () {
+    [$tenant, $tenantAdmin] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+
+    $agent = User::factory()->for($tenant)->create();
+    $agent->assignRole(RoleName::SupportAgent->value);
+    // Explicit client_id: the factory's own default (`User::factory()`, no
+    // ->for($tenant)) would otherwise create an unrelated user in a brand
+    // new tenant of its own, which the RLS policy on `tenants` rejects
+    // outright since this test is bound to $tenant, not bypassed.
+    Ticket::factory()->for($tenant)->assignedTo($agent)->create(['client_id' => $tenantAdmin->id]);
+
+    $token = loginAs($tenant->slug, $tenantAdmin->email);
+
+    $this->withToken($token)->deleteJson("/api/v1/users/{$agent->id}")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('user');
+
+    expect($agent->fresh()->trashed())->toBeFalse();
+});
+
+it('allows deleting a client/agent once their tickets are resolved or closed', function () {
+    [$tenant, $tenantAdmin] = createTenantWithUser();
+    app(TenantContext::class)->set($tenant->id);
+    $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+
+    $client = User::factory()->for($tenant)->create();
+    $client->assignRole(RoleName::Client->value);
+    $agent = User::factory()->for($tenant)->create();
+    $agent->assignRole(RoleName::SupportAgent->value);
+
+    Ticket::factory()->for($tenant)->assignedTo($agent)->withStatus(TicketStatus::Closed)->create(['client_id' => $client->id]);
+
+    $token = loginAs($tenant->slug, $tenantAdmin->email);
+
+    $this->withToken($token)->deleteJson("/api/v1/users/{$client->id}")->assertOk();
+    $this->withToken($token)->deleteJson("/api/v1/users/{$agent->id}")->assertOk();
+
+    expect($client->fresh()->trashed())->toBeTrue();
+    expect($agent->fresh()->trashed())->toBeTrue();
 });
