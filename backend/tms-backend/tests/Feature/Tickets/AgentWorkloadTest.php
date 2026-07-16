@@ -6,6 +6,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Services\Tenancy\TenantContext;
 use Database\Seeders\RoleAndPermissionSeeder;
+use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
@@ -84,7 +85,7 @@ it('never shows another tenant\'s agents in the workload listing', function () {
     $agentA->assignRole(RoleName::SupportAgent->value);
 
     app(TenantContext::class)->bypass('test fixture setup', function () use ($tenantB, $agentB) {
-        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($tenantB->id);
+        app(PermissionRegistrar::class)->setPermissionsTeamId($tenantB->id);
         $agentB->assignRole(RoleName::SupportAgent->value);
     });
 
@@ -101,7 +102,7 @@ it('requires a Super Admin to name a tenant, then returns that tenant\'s workloa
     [$tenant, , , $agent] = createTicketFixture();
 
     app(TenantContext::class)->bypass('test fixture setup', function () use ($tenant, $agent) {
-        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($tenant->id);
+        app(PermissionRegistrar::class)->setPermissionsTeamId($tenant->id);
         $agent->assignRole(RoleName::SupportAgent->value);
     });
 

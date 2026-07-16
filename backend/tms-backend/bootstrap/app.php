@@ -12,11 +12,13 @@ use App\Http\Middleware\SetLocale;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -65,7 +67,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // hides for the same reason as the RLS bug itself — a pre-bound
         // tenant context. See PrimeSanctumAuthentication's own docblock.
         $middleware->prependToPriorityList(
-            before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            before: AuthenticatesRequests::class,
             prepend: PrimeSanctumAuthentication::class,
         );
 
@@ -83,7 +85,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // bound route-model parameter; /ticket-pool/{ticket}/pull takes a
         // raw string on purpose (see its controller) and never hit this.
         $middleware->prependToPriorityList(
-            before: \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            before: SubstituteBindings::class,
             prepend: ResolveTenantContext::class,
         );
     })

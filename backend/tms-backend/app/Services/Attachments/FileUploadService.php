@@ -41,8 +41,8 @@ class FileUploadService
     /**
      * @throws FileInfectedException if the scanner positively identifies malware
      * @throws VirusScanUnavailableException if scanning is enabled, the
-     *         scanner couldn't be reached/errored, and
-     *         config('attachments.antivirus.fail_closed') is true
+     *                                       scanner couldn't be reached/errored, and
+     *                                       config('attachments.antivirus.fail_closed') is true
      */
     public function store(UploadedFile $file, Ticket $ticket, User $uploader): TicketAttachment
     {

@@ -2,6 +2,7 @@
 
 use App\Enums\RoleName;
 use App\Enums\TicketStatus;
+use App\Models\Ticket;
 use App\Models\TicketAttachment;
 use App\Models\TicketComment;
 use App\Models\User;
@@ -64,7 +65,7 @@ it('lets a Super Admin view, update, and delete a ticket in any tenant', functio
 
     $trashed = app(TenantContext::class)->bypass(
         'test assertion',
-        fn () => \App\Models\Ticket::withTrashed()->find($ticket->id)?->trashed(),
+        fn () => Ticket::withTrashed()->find($ticket->id)?->trashed(),
     );
     expect($trashed)->toBeTrue();
 });

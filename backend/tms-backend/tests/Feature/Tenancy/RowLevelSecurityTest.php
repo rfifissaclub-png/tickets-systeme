@@ -4,7 +4,6 @@ use App\Models\AuditLog;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Tenancy\TenantContext;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**

@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\RoleName;
+use App\Models\Ticket;
 use App\Models\TicketType;
+use App\Models\User;
 use App\Services\Tenancy\TenantContext;
 use Database\Seeders\RoleAndPermissionSeeder;
 
@@ -14,7 +16,7 @@ it('lets a Tenant Admin create a ticket on behalf of a client in their own tenan
     app(TenantContext::class)->set($tenant->id);
     $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
 
-    $client = app(TenantContext::class)->bypass('test fixture setup', fn () => \App\Models\User::factory()->for($tenant)->create());
+    $client = app(TenantContext::class)->bypass('test fixture setup', fn () => User::factory()->for($tenant)->create());
     $client->assignRole(RoleName::Client->value);
 
     $ticketType = TicketType::factory()->create();
@@ -64,7 +66,7 @@ it('lets a Super Admin create a ticket for a named tenant and client', function 
 
     $created = app(TenantContext::class)->bypass(
         'test assertion',
-        fn () => \App\Models\Ticket::query()->where('subject', 'Platform issue')->first(),
+        fn () => Ticket::query()->where('subject', 'Platform issue')->first(),
     );
     expect($created->tenant_id)->toBe($tenant->id);
 });

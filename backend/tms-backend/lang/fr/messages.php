@@ -46,7 +46,7 @@ return [
         'created' => 'Entité créée.',
         'updated' => 'Entité mise à jour.',
         'deleted' => 'Entité suspendue.',
-        'client_email_conflict' => "Impossible de suspendre cette entité : Main Corporation a déjà un client avec le même email que :emails. Résolvez le conflit avant de suspendre.",
+        'client_email_conflict' => 'Impossible de suspendre cette entité : Main Corporation a déjà un client avec le même email que :emails. Résolvez le conflit avant de suspendre.',
     ],
 
     'users' => [
