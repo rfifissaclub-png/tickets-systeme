@@ -67,8 +67,11 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Demo accounts for local development only: a platform Super Admin and
-     * one tenant with a Tenant Admin, both with password "password".
+     * Demo accounts for local development only: a platform Super Admin, a
+     * tenant with a Tenant Admin/Support Agent/Client, and a second tenant
+     * (Tenant Admin + Client only) for exercising cross-tenant isolation
+     * without hand-creating throwaway users every time — all password
+     * "password".
      */
     private function seedLocalDevAccounts(): void
     {
@@ -119,5 +122,38 @@ class DatabaseSeeder extends Seeder
         ]);
         $agent->assignRole(RoleName::SupportAgent->value);
         $agent->qualifiedTicketTypes()->attach($itSupport->id, ['tenant_id' => $tenant->id]);
+
+        // A Client, still bound to Acme's team from tenantContext->set()
+        // above — every role-gated page/endpoint needs a real Client
+        // account to demo/test the "denied" side, not just the three
+        // staff roles.
+        $client = User::factory()->for($tenant)->create([
+            'name' => 'Acme Client',
+            'email' => 'client@acme.tms.local',
+        ]);
+        $client->assignRole(RoleName::Client->value);
+
+        // A second tenant, entirely separate from Acme — exists solely so
+        // cross-tenant isolation (a Tenant Admin/Client never seeing the
+        // other tenant's data) can be demoed/tested without hand-creating
+        // one, the same way this was done manually, repeatedly, before.
+        $globex = $tenantContext->bypass(
+            'local dev seed: second demo tenant',
+            fn () => Tenant::factory()->create(['name' => 'Globex Corp', 'slug' => 'globex']),
+        );
+
+        $tenantContext->set($globex->id);
+
+        $globexAdmin = User::factory()->for($globex)->create([
+            'name' => 'Globex Tenant Admin',
+            'email' => 'admin@globex.tms.local',
+        ]);
+        $globexAdmin->assignRole(RoleName::TenantAdmin->value);
+
+        $globexClient = User::factory()->for($globex)->create([
+            'name' => 'Globex Client',
+            'email' => 'client@globex.tms.local',
+        ]);
+        $globexClient->assignRole(RoleName::Client->value);
     }
 }
