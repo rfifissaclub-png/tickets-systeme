@@ -223,6 +223,30 @@ class TenantContext
     }
 
     /**
+     * The common shape behind every Super Admin cross-tenant operation that
+     * also depends on Spatie roles/permissions for a specific target user:
+     * bypass() and withTeam() must both be active, pointed at the same
+     * target, or the team-scoped half silently returns wrong/empty data
+     * with no exception — the exact bug found and fixed piecemeal at
+     * several call sites (TicketService::assign(), and UserManagementService's
+     * paginate/find/create/update/syncRoles()) before this method existed.
+     * Prefer this over calling bypass()+withTeam() separately whenever the
+     * target tenant is known before the callback runs — the one shape this
+     * doesn't fit is a target only discovered *inside* the callback itself
+     * (see UserManagementService::find()'s own comment), which still needs
+     * the two calls made separately.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function bypassForTarget(?string $targetTenantId, string $reason, callable $callback): mixed
+    {
+        return $this->bypass($reason, fn () => $this->withTeam($targetTenantId, $callback));
+    }
+
+    /**
      * Narrow, *unaudited* RLS bypass used only to let Sanctum's own guard
      * resolve the `users` row behind an incoming bearer token — see
      * App\Http\Middleware\PrimeSanctumAuthentication, which runs this

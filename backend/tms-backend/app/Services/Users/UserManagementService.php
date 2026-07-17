@@ -11,7 +11,6 @@ use App\Notifications\UserAccountCreatedNotification;
 use App\Services\Tenancy\TenantContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
-use Spatie\Permission\PermissionRegistrar;
 
 /**
  * A Tenant Admin's own bound session already RLS-scopes every query here to
@@ -45,8 +44,8 @@ class UserManagementService
             // Spatie's "teams" feature scopes model_has_roles by
             // PermissionsTeamId independently of the RLS bypass above —
             // with('roles') here would come back empty for every row
-            // without binding it explicitly (see withTeamContext's own
-            // docblock). A tenant filter lets every row share one team;
+            // without binding it explicitly (see TenantContext::withTeam()'s
+            // own docblock). A tenant filter lets every row share one team;
             // without one (every tenant at once), no single team id can
             // correctly scope a mixed-tenant listing in one eager-load, so
             // each row's own tenant is bound individually instead — more
@@ -56,10 +55,10 @@ class UserManagementService
                 $users = $query();
 
                 if ($tenantIdFilter !== null) {
-                    $this->withTeamContext($tenantIdFilter, fn () => $users->load('roles'));
+                    $this->tenantContext->withTeam($tenantIdFilter, fn () => $users->load('roles'));
                 } else {
                     foreach ($users as $user) {
-                        $this->withTeamContext($user->tenant_id, fn () => $user->load('roles'));
+                        $this->tenantContext->withTeam($user->tenant_id, fn () => $user->load('roles'));
                     }
                 }
 
@@ -82,7 +81,7 @@ class UserManagementService
                 // See paginate()'s own comment: roles() is team-scoped by
                 // Spatie independently of the RLS bypass above — bind the
                 // target's own tenant, not the acting Super Admin's.
-                $this->withTeamContext($user->tenant_id, fn () => $user->load('roles'));
+                $this->tenantContext->withTeam($user->tenant_id, fn () => $user->load('roles'));
 
                 return $user;
             },
@@ -135,25 +134,26 @@ class UserManagementService
             // own docblock for why mail-only).
             $user->notify(new UserAccountCreatedNotification($data['email'], $data['password'], $tenantSlug));
 
-            // Loaded here, inside the correct team context, regardless of
-            // whether $roles is empty: UserController::store() serializes
-            // this returned model directly (no further ->load('roles') of
-            // its own) — doing that afterward, once this bypass/team
-            // context has already ended, would silently come back empty
-            // for a Super Admin (see paginate()'s own comment on why).
-            $this->withTeamContext($targetTenantId, function () use ($user, $roles) {
-                if ($roles !== []) {
-                    $user->syncRoles($roles);
-                }
+            // Regardless of whether $roles is empty: UserController::store()
+            // serializes this returned model directly (no further
+            // ->load('roles') of its own) — doing that afterward, once the
+            // bypass/team context below has already ended, would silently
+            // come back empty for a Super Admin (see paginate()'s own
+            // comment on why). The whole closure runs team-bound to
+            // $targetTenantId from the start via bypassForTarget() below,
+            // not just this tail — harmless, since nothing before this
+            // point touches Spatie roles/permissions at all.
+            if ($roles !== []) {
+                $user->syncRoles($roles);
+            }
 
-                $user->load('roles');
-            });
+            $user->load('roles');
 
             return $user;
         };
 
         return $isSuperAdmin
-            ? $this->tenantContext->bypass('user provisioning (super admin)', $create)
+            ? $this->tenantContext->bypassForTarget($targetTenantId, 'user provisioning (super admin)', $create)
             : $create();
     }
 
@@ -164,6 +164,12 @@ class UserManagementService
     {
         $isSuperAdmin = $actor->hasRole(RoleName::SuperAdmin->value);
 
+        // UpdateUserRequest only ever validates name/email, never tenant_id
+        // — $target->tenant_id can't change over the course of $update
+        // below, so it's safe to capture once, upfront, for
+        // bypassForTarget() rather than re-reading it after fill()/save().
+        $targetTenantId = $target->tenant_id;
+
         $update = function () use ($target, $data) {
             if (isset($data['email']) && $data['email'] !== $target->email) {
                 $this->assertEmailAvailable($data['email'], $target->tenant_id, $target->id);
@@ -173,13 +179,18 @@ class UserManagementService
 
             // Same reasoning as create(): UserController::update()
             // serializes this returned model directly, and roles() is
-            // team-scoped by Spatie independently of the bypass above.
-            $this->withTeamContext($target->tenant_id, fn () => $target->load('roles'));
+            // team-scoped by Spatie independently of the bypass above —
+            // the whole closure runs team-bound via bypassForTarget()
+            // below, harmless since nothing before this point touches
+            // Spatie roles/permissions.
+            $target->load('roles');
 
             return $target;
         };
 
-        return $isSuperAdmin ? $this->tenantContext->bypass('user update (super admin)', $update) : $update();
+        return $isSuperAdmin
+            ? $this->tenantContext->bypassForTarget($targetTenantId, 'user update (super admin)', $update)
+            : $update();
     }
 
     public function delete(User $actor, User $target): void
@@ -235,12 +246,12 @@ class UserManagementService
     {
         $this->assertRoleGrantAllowed($roles, $target->tenant_id);
 
-        // .load('roles') joins syncRoles() inside the same withTeamContext()
-        // call, not after: UserController::(store|update)() already showed
-        // this exact class of bug (roles() is team-scoped by Spatie
-        // independently of the RLS bypass), and this endpoint returns the
-        // model directly the same way.
-        $sync = fn () => $this->withTeamContext($target->tenant_id, function () use ($target, $roles) {
+        // .load('roles') joins syncRoles() inside the same withTeam() call,
+        // not after: UserController::(store|update)() already showed this
+        // exact class of bug (roles() is team-scoped by Spatie independently
+        // of the RLS bypass), and this endpoint returns the model directly
+        // the same way.
+        $sync = fn () => $this->tenantContext->withTeam($target->tenant_id, function () use ($target, $roles) {
             $target->syncRoles($roles);
             $target->load('roles');
         });
@@ -309,40 +320,6 @@ class UserManagementService
             throw ValidationException::withMessages([
                 'email' => [__('validation.unique', ['attribute' => __('validation.attributes.email')])],
             ]);
-        }
-    }
-
-    /**
-     * Spatie's "teams" feature scopes every role/permission pivot row by
-     * PermissionsTeamId, independently of PostgreSQL RLS (those pivot
-     * tables aren't RLS-protected at all — see create_permission_tables).
-     * A Tenant Admin's own bound request already has this set correctly to
-     * their tenant; a Super Admin's never is (they have no tenant of their
-     * own — see ResolveTenantContext), so role/skill writes on their behalf
-     * must set it explicitly for the target's tenant, or the pivot row
-     * would be created scoped to no tenant at all. `$tenantId` is passed
-     * through TenantContext::teamIdFor(), which substitutes the reserved
-     * platform team for a null (tenant-less target) — `team_foreign_key` is
-     * part of the composite primary key on the assignment pivot tables, so
-     * Postgres rejects a literal null there outright (see
-     * TenantContext::PLATFORM_TEAM_ID for the full explanation).
-     *
-     * @template T
-     *
-     * @param  callable(): T  $callback
-     * @return T
-     */
-    private function withTeamContext(?string $tenantId, callable $callback): mixed
-    {
-        $registrar = app(PermissionRegistrar::class);
-        $previous = $registrar->getPermissionsTeamId();
-
-        $registrar->setPermissionsTeamId(TenantContext::teamIdFor($tenantId));
-
-        try {
-            return $callback();
-        } finally {
-            $registrar->setPermissionsTeamId($previous);
         }
     }
 }
