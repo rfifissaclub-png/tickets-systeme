@@ -24,7 +24,11 @@ export function DashboardPage() {
   const canSeeReports = useHasRole('Manager', 'Tenant Admin', 'Super Admin')
   const canSeePool = useHasRole('Support Agent', 'Manager', 'Tenant Admin', 'Super Admin')
 
-  const { data: overview, isLoading: overviewLoading } = useReportOverview()
+  // Not fetched at all when the KPI tiles below are hidden anyway (a plain
+  // Client/Support Agent can't view reports — see nav-config.ts) — an
+  // unconditional call here would 403 on every single dashboard load for a
+  // result the JSX never uses.
+  const { data: overview, isLoading: overviewLoading } = useReportOverview(canSeeReports)
 
   const { data: myTickets, isLoading: myTicketsLoading } = useTickets(
     isStaff

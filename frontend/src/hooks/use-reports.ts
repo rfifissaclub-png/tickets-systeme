@@ -2,11 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 
 import { fetchReportOverview, fetchTicketsByAgent, fetchTicketsByTenant, fetchTicketTrends } from '@/api/reports'
 
-export function useReportOverview() {
+export function useReportOverview(enabled = true) {
   return useQuery({
     queryKey: ['reports', 'overview'],
     queryFn: fetchReportOverview,
     staleTime: 60_000,
+    enabled,
   })
 }
 

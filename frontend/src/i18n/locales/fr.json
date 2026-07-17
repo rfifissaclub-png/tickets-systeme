@@ -237,7 +237,9 @@
     "columnTickets": "Tickets",
     "columnAvgFirstResponse": "Temps moyen de première réponse",
     "columnAvgResolution": "Temps moyen de résolution",
-    "columnTenant": "Espace de travail"
+    "columnTenant": "Espace de travail",
+    "loadErrorTitle": "Impossible de charger les rapports",
+    "loadErrorDescription": "Une erreur s'est produite lors du chargement de ces données. Essayez de rafraîchir la page."
   },
   "pagination": {
     "summary": "Page {{current}} sur {{last}} · {{total}} au total",
@@ -293,6 +295,8 @@
     "editSkillsFor": "Modifier les compétences de {{name}}",
     "noTicketTypesYet": "Aucun type de ticket n'existe encore — créez-en un d'abord.",
     "emptyTitle": "Aucun utilisateur pour le moment",
+    "loadErrorTitle": "Impossible de charger les utilisateurs",
+    "loadErrorDescription": "Une erreur s'est produite lors du chargement de la liste des utilisateurs. Essayez de rafraîchir la page.",
     "createdToast": "Utilisateur créé.",
     "rolesUpdatedToast": "Rôles mis à jour.",
     "skillsUpdatedToast": "Compétences mises à jour.",
@@ -318,6 +322,8 @@
     "suspended": "Suspendue",
     "suspend": "Suspendre",
     "emptyTitle": "Aucune entité pour le moment",
+    "loadErrorTitle": "Impossible de charger les entités",
+    "loadErrorDescription": "Une erreur s'est produite lors du chargement de la liste des entités. Essayez de rafraîchir la page.",
     "createdToast": "Entité créée.",
     "suspendedToast": "Entité suspendue.",
     "suspendConfirm": "Suspendre « {{name}} » ? Ses utilisateurs ne pourront plus se connecter."
@@ -334,6 +340,8 @@
     "columnAction": "Action",
     "columnTarget": "Cible",
     "columnIp": "Adresse IP",
-    "emptyTitle": "Aucune entrée ne correspond à vos filtres"
+    "emptyTitle": "Aucune entrée ne correspond à vos filtres",
+    "loadErrorTitle": "Impossible de charger le journal d'audit",
+    "loadErrorDescription": "Une erreur s'est produite lors du chargement des entrées. Essayez de rafraîchir la page."
   }
 }

@@ -19,7 +19,7 @@ export function AuditLogsPage() {
 
   const debouncedAction = useDebouncedValue(action)
 
-  const { data, isLoading } = useAuditLogs({
+  const { data, isLoading, isError } = useAuditLogs({
     action: debouncedAction || undefined,
     from: from || undefined,
     to: to || undefined,
@@ -81,11 +81,19 @@ export function AuditLogsPage() {
         </div>
       )}
 
-      {!isLoading && data && data.logs.length === 0 && (
+      {isError && (
+        <EmptyState
+          icon={ScrollTextIcon}
+          title={t('auditLogs.loadErrorTitle')}
+          description={t('auditLogs.loadErrorDescription')}
+        />
+      )}
+
+      {!isLoading && !isError && data && data.logs.length === 0 && (
         <EmptyState icon={ScrollTextIcon} title={t('auditLogs.emptyTitle')} />
       )}
 
-      {!isLoading && data && data.logs.length > 0 && (
+      {!isLoading && !isError && data && data.logs.length > 0 && (
         <>
           <div className="overflow-hidden rounded-lg border">
             <table className="w-full text-sm">

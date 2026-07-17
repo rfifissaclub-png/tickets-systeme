@@ -51,7 +51,7 @@ export function UsersPage() {
   const canManageSkills = useHasRole('Tenant Admin', 'Manager', 'Super Admin')
 
   const [page, setPage] = useState(1)
-  const { data, isLoading } = useUsers({ page })
+  const { data, isLoading, isError } = useUsers({ page })
   const { data: ticketTypes } = useTicketTypes()
 
   const [creatingOpen, setCreatingOpen] = useState(false)
@@ -162,11 +162,19 @@ export function UsersPage() {
         </div>
       )}
 
-      {!isLoading && data && data.users.length === 0 && (
+      {isError && (
+        <EmptyState
+          icon={UsersIcon}
+          title={t('users.loadErrorTitle')}
+          description={t('users.loadErrorDescription')}
+        />
+      )}
+
+      {!isLoading && !isError && data && data.users.length === 0 && (
         <EmptyState icon={UsersIcon} title={t('users.emptyTitle')} />
       )}
 
-      {!isLoading && data && data.users.length > 0 && (
+      {!isLoading && !isError && data && data.users.length > 0 && (
         <>
           <div className="overflow-hidden rounded-lg border">
             <table className="w-full text-sm">

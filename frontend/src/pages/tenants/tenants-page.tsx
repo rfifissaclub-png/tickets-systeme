@@ -42,7 +42,7 @@ type FormValues = z.infer<ReturnType<typeof useCreateTenantFormSchema>>
 export function TenantsPage() {
   const { t } = useTranslation()
   const [page, setPage] = useState(1)
-  const { data, isLoading } = useTenants({ page })
+  const { data, isLoading, isError } = useTenants({ page })
   const { mutateAsync: create, isPending: creating } = useCreateTenant()
   const { mutateAsync: remove } = useDeleteTenant()
   const [creatingOpen, setCreatingOpen] = useState(false)
@@ -100,11 +100,19 @@ export function TenantsPage() {
         </div>
       )}
 
-      {!isLoading && data && data.tenants.length === 0 && (
+      {isError && (
+        <EmptyState
+          icon={BuildingIcon}
+          title={t('tenants.loadErrorTitle')}
+          description={t('tenants.loadErrorDescription')}
+        />
+      )}
+
+      {!isLoading && !isError && data && data.tenants.length === 0 && (
         <EmptyState icon={BuildingIcon} title={t('tenants.emptyTitle')} />
       )}
 
-      {!isLoading && data && data.tenants.length > 0 && (
+      {!isLoading && !isError && data && data.tenants.length > 0 && (
         <>
           <div className="overflow-hidden rounded-lg border">
             <table className="w-full text-sm">

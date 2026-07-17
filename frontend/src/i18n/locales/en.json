@@ -237,7 +237,9 @@
     "columnTickets": "Tickets",
     "columnAvgFirstResponse": "Avg first response",
     "columnAvgResolution": "Avg resolution",
-    "columnTenant": "Tenant"
+    "columnTenant": "Tenant",
+    "loadErrorTitle": "Couldn't load reports",
+    "loadErrorDescription": "Something went wrong fetching this data. Try refreshing the page."
   },
   "pagination": {
     "summary": "Page {{current}} of {{last}} · {{total}} total",
@@ -293,6 +295,8 @@
     "editSkillsFor": "Edit skills for {{name}}",
     "noTicketTypesYet": "No ticket types exist yet — create one first.",
     "emptyTitle": "No users yet",
+    "loadErrorTitle": "Couldn't load users",
+    "loadErrorDescription": "Something went wrong fetching the user list. Try refreshing the page.",
     "createdToast": "User created.",
     "rolesUpdatedToast": "Roles updated.",
     "skillsUpdatedToast": "Skills updated.",
@@ -318,6 +322,8 @@
     "suspended": "Suspended",
     "suspend": "Suspend",
     "emptyTitle": "No entities yet",
+    "loadErrorTitle": "Couldn't load entities",
+    "loadErrorDescription": "Something went wrong fetching the entity list. Try refreshing the page.",
     "createdToast": "Entity created.",
     "suspendedToast": "Entity suspended.",
     "suspendConfirm": "Suspend \"{{name}}\"? Its users will no longer be able to sign in."
@@ -334,6 +340,8 @@
     "columnAction": "Action",
     "columnTarget": "Target",
     "columnIp": "IP address",
-    "emptyTitle": "No audit entries match your filters"
+    "emptyTitle": "No audit entries match your filters",
+    "loadErrorTitle": "Couldn't load the audit log",
+    "loadErrorDescription": "Something went wrong fetching audit entries. Try refreshing the page."
   }
 }
