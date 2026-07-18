@@ -40,8 +40,17 @@ class StoreTicketRequest extends ApiFormRequest
             // usefully confirms the client belongs to the actor's own
             // tenant, but is skipped for a Super Admin for the same reason
             // as tenant_id above: RLS would block it from ever matching.
+            // `nullable`, matching tenant_id above: the real ticket-create
+            // form always submits this key (empty string when hidden —
+            // TicketForm's client_id defaults to '', not undefined, for a
+            // Client or a self-serving staff member), and
+            // ConvertEmptyStringsToNull turns that into a present-but-null
+            // value before validation runs — without `nullable` here,
+            // `uuid` still ran against that null and failed closed for
+            // every non-staff actor's own real form submission.
             'client_id' => [
                 Rule::requiredIf($isSuperAdmin),
+                'nullable',
                 'uuid',
                 Rule::when(! $isSuperAdmin, ['exists:users,id']),
             ],

@@ -32,6 +32,30 @@ it('lets a Tenant Admin create a ticket on behalf of a client in their own tenan
         ->assertJsonPath('data.client.id', $client->id);
 });
 
+it('lets a Client create their own ticket, even when the form submits client_id/tenant_id as empty strings', function () {
+    // TicketForm's client_id/tenant_id default to '' (not undefined) when
+    // those fields are hidden for a Client — matches the real browser
+    // request body, not just what's convenient to construct by hand.
+    // ConvertEmptyStringsToNull turns '' into a present-but-null value
+    // before validation runs; client_id's own rule must tolerate that the
+    // same way tenant_id's already does (see StoreTicketRequest).
+    [$tenant, , $client] = createTicketFixture();
+    app(TenantContext::class)->set($tenant->id);
+    $client->assignRole(RoleName::Client->value);
+
+    $ticketType = TicketType::factory()->create();
+    $token = loginAs($tenant->slug, $client->email);
+
+    $this->withToken($token)->postJson('/api/v1/tickets', [
+        'ticket_type_id' => $ticketType->id,
+        'tenant_id' => '',
+        'client_id' => '',
+        'subject' => 'Self-service ticket',
+        'description' => 'Raised directly by the client.',
+    ])->assertCreated()
+        ->assertJsonPath('data.client.id', $client->id);
+});
+
 it('rejects a Super Admin creating a ticket without naming a tenant or client', function () {
     $ticketType = TicketType::factory()->create();
     $superAdmin = createSuperAdmin();
