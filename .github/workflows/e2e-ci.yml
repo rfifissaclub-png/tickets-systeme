@@ -1,0 +1,104 @@
+name: E2E CI
+
+# Spans both stacks (unlike backend-ci.yml/frontend-ci.yml, which stay
+# split) — the suite it runs drives the real frontend against the real
+# backend, so it triggers on changes to either, plus the infra that wires
+# them together.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/tms-backend/**"
+      - "frontend/**"
+      - "infra/**"
+      - ".github/workflows/e2e-ci.yml"
+  pull_request:
+    paths:
+      - "backend/tms-backend/**"
+      - "frontend/**"
+      - "infra/**"
+      - ".github/workflows/e2e-ci.yml"
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # .env is gitignored — backend/queue/reverb all load config via
+      # env_file: ../backend/tms-backend/.env (not inline `environment:`),
+      # so `docker compose up` fails outright without one. The generated
+      # key matches php artisan key:generate's own format (base64: + 32
+      # random bytes) without needing PHP available on the runner yet.
+      - name: Prepare backend .env
+        run: |
+          cp backend/tms-backend/.env.example backend/tms-backend/.env
+          sed -i "s|^APP_KEY=.*|APP_KEY=base64:$(openssl rand -base64 32)|" backend/tms-backend/.env
+
+      - name: Build stack images
+        run: docker compose -f infra/docker-compose.yml build
+
+      - name: Start stack
+        run: docker compose -f infra/docker-compose.yml up -d
+
+      # clamav's healthcheck has start_period: 180s, and backend/queue both
+      # depend on it being healthy — on a cold volume (every CI run, always
+      # cold) freshclam must fetch virus signatures first, regardless of
+      # ATTACHMENTS_AV_ENABLED defaulting to false (this stack's default
+      # config never actually calls clamav — Compose's dependency graph
+      # blocks on it anyway). Budgeting for that worst case rather than
+      # assuming a fast boot.
+      - name: Wait for the stack to be ready
+        run: |
+          deadline=$((SECONDS + 480))
+          until curl -sf -H 'Accept: application/json' http://localhost:8080/api/v1/ticket-types -o /dev/null; do
+            # 401 (unauthenticated) is success here — it proves nginx ->
+            # backend -> Laravel routing is alive; curl -f only treats 2xx
+            # as success, so check the real status directly instead.
+            status=$(curl -s -o /dev/null -w '%{http_code}' -H 'Accept: application/json' http://localhost:8080/api/v1/ticket-types || true)
+            if [ "$status" = "401" ]; then break; fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "Stack did not become ready in time; dumping logs:"
+              docker compose -f infra/docker-compose.yml logs
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Migrate and seed
+        run: docker compose -f infra/docker-compose.yml exec -T backend php artisan migrate:fresh --seed --force
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e suite
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f infra/docker-compose.yml down -v
