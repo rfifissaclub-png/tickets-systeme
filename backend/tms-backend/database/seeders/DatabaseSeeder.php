@@ -83,17 +83,30 @@ class DatabaseSeeder extends Seeder
         // Spatie's team resolver also needs the reserved platform team
         // bound before assignRole() — see TenantContext::PLATFORM_TEAM_ID.
         $tenantContext->bypass('local dev seed: platform super admin', function () use ($tenantContext) {
-            $superAdmin = User::factory()->superAdmin()->create([
-                'name' => 'Platform Super Admin',
-                'email' => 'super-admin@tms.local',
-            ]);
+            // Ensure idempotent creation: if the super admin already exists,
+            // reuse it instead of creating a duplicate (unique email constraint).
+            $superAdmin = User::query()->where('email', 'super-admin@tms.local')->first();
+
+            if (! $superAdmin) {
+                $superAdmin = User::factory()->superAdmin()->create([
+                    'name' => 'Platform Super Admin',
+                    'email' => 'super-admin@tms.local',
+                ]);
+            }
+
             $tenantContext->bindPlatformTeam();
-            $superAdmin->assignRole(RoleName::SuperAdmin->value);
+
+            if (! $superAdmin->hasRole(RoleName::SuperAdmin->value)) {
+                $superAdmin->assignRole(RoleName::SuperAdmin->value);
+            }
         });
 
         $tenant = $tenantContext->bypass(
             'local dev seed: demo tenant',
-            fn () => Tenant::factory()->create(['name' => 'Acme Support', 'slug' => 'acme']),
+            fn () => Tenant::query()->firstOrCreate(
+                ['slug' => 'acme'],
+                ['name' => 'Acme Support'],
+            ),
         );
 
         // Bind context to the new tenant so the Tenant Admin below is
@@ -102,11 +115,21 @@ class DatabaseSeeder extends Seeder
         // point, tenant_id already matches the bound context.
         $tenantContext->set($tenant->id);
 
-        $tenantAdmin = User::factory()->for($tenant)->create([
-            'name' => 'Acme Tenant Admin',
-            'email' => 'admin@acme.tms.local',
-        ]);
-        $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+        $tenantAdmin = User::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('email', 'admin@acme.tms.local')
+            ->first();
+
+        if (! $tenantAdmin) {
+            $tenantAdmin = User::factory()->for($tenant)->create([
+                'name' => 'Acme Tenant Admin',
+                'email' => 'admin@acme.tms.local',
+            ]);
+        }
+
+        if (! $tenantAdmin->hasRole(RoleName::TenantAdmin->value)) {
+            $tenantAdmin->assignRole(RoleName::TenantAdmin->value);
+        }
 
         // Ticket types are the global catalog seedTicketTypeCatalog() just
         // created, not this tenant's own — every tenant shares the same set.
@@ -116,22 +139,47 @@ class DatabaseSeeder extends Seeder
         // pool's skill-based filtering (see TicketPoolService::poolQuery())
         // out of the box instead of it only being visible once someone
         // configures skills by hand.
-        $agent = User::factory()->for($tenant)->create([
-            'name' => 'Acme Support Agent',
-            'email' => 'agent@acme.tms.local',
-        ]);
-        $agent->assignRole(RoleName::SupportAgent->value);
-        $agent->qualifiedTicketTypes()->attach($itSupport->id, ['tenant_id' => $tenant->id]);
+        $agent = User::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('email', 'agent@acme.tms.local')
+            ->first();
+
+        if (! $agent) {
+            $agent = User::factory()->for($tenant)->create([
+                'name' => 'Acme Support Agent',
+                'email' => 'agent@acme.tms.local',
+            ]);
+        }
+
+        if (! $agent->hasRole(RoleName::SupportAgent->value)) {
+            $agent->assignRole(RoleName::SupportAgent->value);
+        }
+
+        // Attach qualification only if not already present to avoid pivot unique violations.
+        $hasQualification = $agent->qualifiedTicketTypes()->where('ticket_types.id', $itSupport->id)->exists();
+        if (! $hasQualification) {
+            $agent->qualifiedTicketTypes()->attach($itSupport->id, ['tenant_id' => $tenant->id]);
+        }
 
         // A Client, still bound to Acme's team from tenantContext->set()
         // above — every role-gated page/endpoint needs a real Client
         // account to demo/test the "denied" side, not just the three
         // staff roles.
-        $client = User::factory()->for($tenant)->create([
-            'name' => 'Acme Client',
-            'email' => 'client@acme.tms.local',
-        ]);
-        $client->assignRole(RoleName::Client->value);
+        $client = User::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('email', 'client@acme.tms.local')
+            ->first();
+
+        if (! $client) {
+            $client = User::factory()->for($tenant)->create([
+                'name' => 'Acme Client',
+                'email' => 'client@acme.tms.local',
+            ]);
+        }
+
+        if (! $client->hasRole(RoleName::Client->value)) {
+            $client->assignRole(RoleName::Client->value);
+        }
 
         // A second tenant, entirely separate from Acme — exists solely so
         // cross-tenant isolation (a Tenant Admin/Client never seeing the
@@ -139,21 +187,44 @@ class DatabaseSeeder extends Seeder
         // one, the same way this was done manually, repeatedly, before.
         $globex = $tenantContext->bypass(
             'local dev seed: second demo tenant',
-            fn () => Tenant::factory()->create(['name' => 'Globex Corp', 'slug' => 'globex']),
+            fn () => Tenant::query()->firstOrCreate(
+                ['slug' => 'globex'],
+                ['name' => 'Globex Corp'],
+            ),
         );
 
         $tenantContext->set($globex->id);
 
-        $globexAdmin = User::factory()->for($globex)->create([
-            'name' => 'Globex Tenant Admin',
-            'email' => 'admin@globex.tms.local',
-        ]);
-        $globexAdmin->assignRole(RoleName::TenantAdmin->value);
+        $globexAdmin = User::query()
+            ->where('tenant_id', $globex->id)
+            ->where('email', 'admin@globex.tms.local')
+            ->first();
 
-        $globexClient = User::factory()->for($globex)->create([
-            'name' => 'Globex Client',
-            'email' => 'client@globex.tms.local',
-        ]);
-        $globexClient->assignRole(RoleName::Client->value);
+        if (! $globexAdmin) {
+            $globexAdmin = User::factory()->for($globex)->create([
+                'name' => 'Globex Tenant Admin',
+                'email' => 'admin@globex.tms.local',
+            ]);
+        }
+
+        if (! $globexAdmin->hasRole(RoleName::TenantAdmin->value)) {
+            $globexAdmin->assignRole(RoleName::TenantAdmin->value);
+        }
+
+        $globexClient = User::query()
+            ->where('tenant_id', $globex->id)
+            ->where('email', 'client@globex.tms.local')
+            ->first();
+
+        if (! $globexClient) {
+            $globexClient = User::factory()->for($globex)->create([
+                'name' => 'Globex Client',
+                'email' => 'client@globex.tms.local',
+            ]);
+        }
+
+        if (! $globexClient->hasRole(RoleName::Client->value)) {
+            $globexClient->assignRole(RoleName::Client->value);
+        }
     }
 }
