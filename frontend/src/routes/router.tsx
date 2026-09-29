@@ -15,6 +15,8 @@ import { TicketDetailPage } from '@/pages/tickets/ticket-detail-page'
 import { TicketListPage } from '@/pages/tickets/ticket-list-page'
 import { TicketPoolPage } from '@/pages/tickets/ticket-pool-page'
 import { UsersPage } from '@/pages/users/users-page'
+import { ClientsPage } from '@/pages/clients/clients-page'
+import { ClientDetailPage } from '@/pages/clients/client-detail-page'
 
 import { GuestRoute } from './guest-route'
 import { ProtectedRoute } from './protected-route'
@@ -48,6 +50,8 @@ export const router = createBrowserRouter([
           { path: '/reports', element: <ReportsPage /> },
           { path: '/ticket-types', element: <TicketTypesPage /> },
           { path: '/users', element: <UsersPage /> },
+          { path: '/clients', element: <ClientsPage /> },
+          { path: '/clients/:clientId', element: <ClientDetailPage /> },
           { path: '/tenants', element: <TenantsPage /> },
           { path: '/audit-logs', element: <AuditLogsPage /> },
         ],

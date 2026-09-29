@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -64,8 +65,6 @@ export function TenantsPage() {
   }
 
   const onSuspend = async (tenant: Tenant) => {
-    if (!window.confirm(t('tenants.suspendConfirm', { name: tenant.name }))) return
-
     try {
       await remove(tenant.id)
       toast.success(t('tenants.suspendedToast'))
@@ -136,15 +135,20 @@ export function TenantsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={t('tenants.suspend')}
-                          disabled={tenant.status === 'suspended'}
-                          onClick={() => onSuspend(tenant)}
+                        <ConfirmDialog
+                          title={t('tenants.suspendConfirm', { name: tenant.name })}
+                          description={t('tenants.suspendConfirmDescription')}
+                          onConfirm={() => onSuspend(tenant)}
                         >
-                          <TrashIcon className="size-4" />
-                        </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t('tenants.suspend')}
+                            disabled={tenant.status === 'suspended'}
+                          >
+                            <TrashIcon className="size-4" />
+                          </Button>
+                        </ConfirmDialog>
                       </div>
                     </td>
                   </tr>

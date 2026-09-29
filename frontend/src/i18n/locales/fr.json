@@ -13,7 +13,8 @@
     "dash": "—",
     "unexpectedError": "Une erreur inattendue s'est produite.",
     "edit": "Modifier",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "back": "Retour"
   },
   "nav": {
     "dashboard": "Tableau de bord",
@@ -343,5 +344,45 @@
     "emptyTitle": "Aucune entrée ne correspond à vos filtres",
     "loadErrorTitle": "Impossible de charger le journal d'audit",
     "loadErrorDescription": "Une erreur s'est produite lors du chargement des entrées. Essayez de rafraîchir la page."
+  },
+  "clients": {
+    "title": "Clients",
+    "subtitle": "Gérez les organisations clientes et leurs contacts.",
+    "new": "Nouveau client",
+    "edit": "Modifier le client",
+    "details": "Détails du client",
+    "notFoundTitle": "Client introuvable",
+    "notFoundDescription": "Ce client a peut-être été supprimé ou vous n'y avez pas accès.",
+    "backToList": "Retour à la liste des clients",
+    "searchPlaceholder": "Rechercher des clients…",
+    "filter": {
+      "all": "Tous les clients",
+      "direct": "Clients directs",
+      "linked": "Clients rattachés"
+    },
+    "emptyTitle": "Aucun client trouvé",
+    "columnName": "Nom",
+    "columnEmail": "E-mail",
+    "form": {
+      "name": "Nom",
+      "email": "E-mail"
+    },
+    "createdToast": "Client créé.",
+    "updatedToast": "Client mis à jour.",
+    "deletedToast": "Client supprimé.",
+    "contacts": {
+      "title": "Contacts",
+      "new": "Nouveau contact",
+      "empty": "Aucun contact pour le moment.",
+      "edit": "Modifier le contact",
+      "delete": "Supprimer le contact",
+      "form": {
+        "name": "Nom",
+        "email": "E-mail"
+      },
+      "createdToast": "Contact créé.",
+      "updatedToast": "Contact mis à jour.",
+      "deletedToast": "Contact supprimé."
+    }
   }
 }

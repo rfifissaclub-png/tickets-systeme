@@ -38,16 +38,34 @@ class TenantManagementService
         );
     }
 
-    public function find(User $actor, string $tenantId): Tenant
+    /**
+     * Find a tenant by UUID or slug. Accepts either the UUID primary key
+     * or the human-friendly slug used in URLs; preserves the same RLS and
+     * Super Admin bypass semantics as before.
+     *
+     * @param string $tenantIdOrSlug
+     */
+    public function find(User $actor, string $tenantIdOrSlug): Tenant
     {
+        // Avoid passing a non-UUID string into a UUID comparison which
+        // Postgres will reject with "invalid input syntax for type uuid".
+        $isUuid = (bool) preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/', $tenantIdOrSlug);
+
+        $query = function () use ($tenantIdOrSlug, $isUuid) {
+            $q = Tenant::query();
+
+            if ($isUuid) {
+                return $q->where('id', $tenantIdOrSlug)->firstOrFail();
+            }
+
+            return $q->where('slug', $tenantIdOrSlug)->firstOrFail();
+        };
+
         if (! $actor->hasRole(RoleName::SuperAdmin->value)) {
-            return Tenant::query()->findOrFail($tenantId);
+            return $query();
         }
 
-        return $this->tenantContext->bypass(
-            'tenant lookup (super admin)',
-            fn () => Tenant::query()->findOrFail($tenantId),
-        );
+        return $this->tenantContext->bypass('tenant lookup (super admin)', $query);
     }
 
     /**

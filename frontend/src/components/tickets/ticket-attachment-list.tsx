@@ -14,6 +14,8 @@ import {
 } from '@/hooks/use-ticket-attachments'
 import { fetchAttachmentDownloadUrl } from '@/api/ticket-attachments'
 import { toApiError } from '@/lib/api-client'
+import AttachmentPreview from '@/components/ui/attachment-preview'
+import AttachmentLightbox from '@/components/ui/attachment-lightbox'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -86,12 +88,19 @@ export function TicketAttachmentList({ ticketId }: { ticketId: string }) {
         <ul className="divide-border divide-y rounded-lg border">
           {attachments.map((attachment) => (
             <li key={attachment.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{attachment.original_filename}</p>
-                <p className="text-muted-foreground text-xs">
-                  {formatBytes(attachment.size_bytes)} ·{' '}
-                  {t('attachments.uploadedBy', { name: attachment.uploader?.name ?? t('common.someone') })}
-                </p>
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="flex-shrink-0">
+                  <AttachmentLightbox attachmentId={attachment.id} mimeType={attachment.mime_type} title={attachment.original_filename}>
+                    <AttachmentPreview attachmentId={attachment.id} mimeType={attachment.mime_type} className="max-h-20 max-w-[120px] object-cover rounded" />
+                  </AttachmentLightbox>
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{attachment.original_filename}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {formatBytes(attachment.size_bytes)} ·{' '}
+                    {t('attachments.uploadedBy', { name: attachment.uploader?.name ?? t('common.someone') })}
+                  </p>
+                </div>
               </div>
               <div className="flex shrink-0 gap-1">
                 <Button

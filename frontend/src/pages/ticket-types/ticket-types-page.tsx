@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -118,8 +119,6 @@ export function TicketTypesPage() {
   }
 
   const onDelete = async (ticketType: TicketType) => {
-    if (!window.confirm(t('ticketTypes.deleteConfirm', { name: ticketType.name }))) return
-
     try {
       await remove(ticketType.id)
       toast.success(t('ticketTypes.deletedToast'))
@@ -205,14 +204,19 @@ export function TicketTypesPage() {
                         <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(ticketType)}>
                           <PencilIcon className="size-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={t('common.delete')}
-                          onClick={() => onDelete(ticketType)}
+                        <ConfirmDialog
+                          title={t('ticketTypes.deleteConfirm', { name: ticketType.name })}
+                          description={t('ticketTypes.deleteConfirmDescription')}
+                          onConfirm={() => onDelete(ticketType)}
                         >
-                          <TrashIcon className="size-4" />
-                        </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t('common.delete')}
+                          >
+                            <TrashIcon className="size-4" />
+                          </Button>
+                        </ConfirmDialog>
                       </div>
                     )}
                   </td>

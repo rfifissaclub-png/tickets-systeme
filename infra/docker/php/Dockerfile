@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 
 ARG PHP_VERSION=8.4
+ARG TMS_UID=1000
+ARG TMS_GID=1000
 
 FROM php:${PHP_VERSION}-fpm-bookworm AS base
 
@@ -28,7 +30,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-RUN groupadd -g 1000 tms && useradd -u 1000 -g tms -m tms
+RUN groupadd -g ${TMS_GID} tms && useradd -u ${TMS_UID} -g tms -m tms
 
 # ---------------------------------------------------------------------------
 FROM base AS dependencies

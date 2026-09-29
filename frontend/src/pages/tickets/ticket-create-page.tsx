@@ -21,10 +21,11 @@ export function TicketCreatePage() {
   const isStaff = !useHasRole('Client')
   const isSuperAdmin = useHasRole('Super Admin')
 
-  const onSubmit = async (values: TicketFormValues) => {
+  const onSubmit = async (values: TicketFormValues | FormData) => {
     setFormError(null)
     try {
-      const ticket = await mutateAsync(values)
+      // mutateAsync accepts either a JSON payload or FormData (for attachments)
+      const ticket = await mutateAsync(values as any)
       toast.success(t('tickets.create.createdToast'))
       // A Super Admin's own session has no tenant bound, so navigating
       // straight to another tenant's ticket detail page 404s (that page

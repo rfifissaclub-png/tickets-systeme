@@ -6,6 +6,7 @@ use App\Enums\RoleName;
 use App\Enums\TicketPriority;
 use App\Http\Requests\ApiFormRequest;
 use App\Models\Ticket;
+use App\Services\Attachments\FileUploadService;
 use Illuminate\Validation\Rule;
 
 class StoreTicketRequest extends ApiFormRequest
@@ -57,6 +58,14 @@ class StoreTicketRequest extends ApiFormRequest
             'subject' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'priority' => ['sometimes', Rule::enum(TicketPriority::class)],
+            // Optional attachments on create: an array of files matching
+            // the same rules as standalone attachment upload.
+            'attachments' => ['sometimes', 'array'],
+            'attachments.*' => [
+                'file',
+                'max:'.config('attachments.max_size_kb'),
+                'mimetypes:'.implode(',', FileUploadService::ALLOWED_MIME_TYPES),
+            ],
         ];
     }
 }

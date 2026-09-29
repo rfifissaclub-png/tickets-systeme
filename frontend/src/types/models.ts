@@ -32,6 +32,15 @@ export interface User {
   skills?: TicketType[]
 }
 
+export interface Client {
+  id: string
+  tenant_id: string
+  name: string
+  email: string
+  is_linked?: boolean | null
+  parent_tenant_id?: string | null
+}
+
 export interface TicketType {
   id: string
   name: string

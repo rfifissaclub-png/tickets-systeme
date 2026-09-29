@@ -3,25 +3,101 @@
 ## Local development (Docker Compose)
 
 ```
-cd infra
 cp ../backend/tms-backend/.env.example ../backend/tms-backend/.env
+cp .env.example .env   # optional — defaults work, but this lets you customise ports/hosts
 docker compose up -d
 docker compose exec backend php artisan key:generate
 docker compose exec backend php artisan migrate
 docker compose exec backend php artisan db:seed
 ```
 
-Services and their host ports (see `infra/docker-compose.yml`):
+### Accessing from another device
+
+By default the stack binds to `localhost`, so it is only reachable from this
+machine. To access it from a phone, tablet, or another workstation on the same
+LAN:
+
+1. Find this machine's LAN IP (e.g. `192.168.1.42`).
+2. Copy `infra/.env.example` to `infra/.env` and set:
+
+   ```
+   APP_HOST=192.168.1.42
+   ```
+
+   Docker Compose reads `.env` automatically — no extra flags needed. Leave any
+   variable out to keep its default.
+
+3. Restart the stack so the frontend image rebuilds with the new host:
+
+   ```
+   docker compose up -d --build
+   ```
+
+4. Browse to `http://192.168.1.42:8080` (or the `NGINX_PORT` you set).
+
+`APP_HOST` controls every browser-facing URL: the API, the frontend SPA, the
+WebSocket (Reverb) endpoint, and the CORS/CSP headers. The backend's
+`APP_URL`, `FRONTEND_URL`, and Swagger host are also overridden in
+`docker-compose.yml` via the same variable, so links in emails and API docs
+point to the correct host automatically.
+
+> **Internal service hostnames are unchanged.** Inside containers, services
+> always connect to each other via Docker's internal DNS (`postgres`, `redis`,
+> `minio`, `reverb`, `clamav`, `mailpit`) — those are not visible to the
+> browser and need no configuration.
+
+### Customising host ports
+
+If a port is already in use on your machine, override it in `infra/.env`:
+
+```
+NGINX_PORT=8090
+FRONTEND_PORT=8091
+```
+
+| Variable | Default | Service |
+|---|---|---|
+| `NGINX_PORT` | 8080 | Backend API |
+| `FRONTEND_PORT` | 8081 | Frontend SPA |
+| `REVERB_PORT` | 8085 | WebSocket (host-side) |
+| `POSTGRES_PORT` | 5432 | PostgreSQL |
+| `REDIS_PORT` | 6379 | Redis |
+| `MINIO_API_PORT` | 9000 | MinIO API |
+| `MINIO_CONSOLE_PORT` | 9001 | MinIO Console |
+| `MAILPIT_UI_PORT` | 8025 | Mailpit UI |
+| `MAILPIT_SMTP_PORT` | 1025 | Mailpit SMTP |
+| `CLAMAV_PORT` | 3310 | ClamAV |
+
+### File ownership and UID
+
+The PHP containers run as a non-root user mapped to UID/GID 1000 by default.
+On some systems (e.g. macOS, Fedora) UID 1000 is already taken by a real user
+account, which causes permission errors on bind-mounted volumes. If you hit
+this, set `TMS_UID` and `TMS_GID` in `infra/.env` to match your local user:
+
+```
+TMS_UID=$(id -u)
+TMS_GID=$(id -g)
+```
+
+For day-to-day frontend work, running `npm run dev` directly on the host
+(against the same `backend`/`nginx` stack) is faster than rebuilding the
+`frontend` container on every change — see `frontend/README.md`. The
+`frontend` Compose service exists so the production Docker image path is
+exercised locally too, not just in CI.
+
+> Port numbers may be overridden via `infra/.env` (see the table above). The
+> defaults match what is listed here.
 
 | Service | Host port | Purpose |
 |---|---|---|
-| `nginx` | 8080 | Backend API entrypoint |
-| `frontend` | 8081 | Production-style SPA build, served by its own nginx |
-| `reverb` | 8085 | WebSocket server (browser-facing) |
-| `postgres` | 5432 | Primary database |
-| `redis` | 6379 | Cache, queue, Reverb pub/sub |
-| `minio` | 9000 (API), 9001 (console) | S3-compatible object storage, dev only |
-| `mailpit` | 8025 (UI), 1025 (SMTP) | Catches outgoing email in dev |
+| `nginx` | `NGINX_PORT` (default 8080) | Backend API entrypoint |
+| `frontend` | `FRONTEND_PORT` (default 8081) | Production-style SPA build |
+| `reverb` | `REVERB_PORT` (default 8085) | WebSocket server (browser-facing) |
+| `postgres` | `POSTGRES_PORT` (default 5432) | Primary database |
+| `redis` | `REDIS_PORT` (default 6379) | Cache, queue, Reverb pub/sub |
+| `minio` | `MINIO_API_PORT` (default 9000), `MINIO_CONSOLE_PORT` (default 9001) | S3-compatible object storage, dev only |
+| `mailpit` | `MAILPIT_UI_PORT` (default 8025), `MAILPIT_SMTP_PORT` (default 1025) | Catches outgoing email in dev |
 
 For day-to-day frontend work, running `npm run dev` directly on the host
 (against the same `backend`/`nginx` stack) is faster than rebuilding the

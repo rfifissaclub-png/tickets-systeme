@@ -10,6 +10,7 @@ use App\Models\Ticket;
 use App\Services\Tenancy\TenantContext;
 use App\Services\Tickets\TicketSearchService;
 use App\Services\Tickets\TicketService;
+use App\Services\Attachments\FileUploadService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class TicketController extends Controller
         private readonly TicketService $ticketService,
         private readonly TicketSearchService $ticketSearchService,
         private readonly TenantContext $tenantContext,
+        private readonly FileUploadService $fileUploadService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -50,6 +52,21 @@ class TicketController extends Controller
             'platform-wide ticket creation (super admin)',
             fn () => $ticket->load(['ticketType', 'client', 'agent']),
         );
+
+        // If the request included attachments, store them now using the
+        // existing FileUploadService so rules/virus-scan/storage are reused.
+        if ($request->hasFile('attachments')) {
+            $files = $request->file('attachments');
+
+            $this->tenantContext->runScoped('platform-wide attachment upload (super admin)', function () use ($files, $ticket, $request) {
+                foreach ($files as $file) {
+                    $this->fileUploadService->store($file, $ticket, $request->user());
+                }
+
+                // eager-load attachments and their uploader for the response
+                $ticket->load(['attachments.uploader']);
+            });
+        }
 
         return ApiResponse::success(
             data: new TicketResource($ticket),

@@ -22,6 +22,24 @@ use App\Http\Controllers\Api\V1\TicketTypeController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\UserRoleController;
 use Illuminate\Support\Facades\Route;
+use App\Models\Ticket;
+use App\Services\Tenancy\TenantContext;
+
+// Scoped ticket binder: resolve most {ticket} params to a model across
+// tenants (audited bypass) but deliberately skip binding for the ticket
+// pool's pull endpoint which expects a raw id string to perform its own
+// SELECT ... FOR UPDATE logic inside a transaction.
+Route::bind('ticket', function ($value) {
+    $route = request()->route();
+    $routeName = $route ? $route->getName() : null;
+
+    if ($routeName === 'ticket-pool.pull') {
+        return $value;
+    }
+
+    return app(TenantContext::class)->bypass('route model binding', fn () => Ticket::withTrashed()->findOrFail($value));
+});
+
 
 Route::prefix('auth')->name('auth.')->group(function () {
     Route::post('/login', LoginController::class)->middleware('throttle:login')->name('login');
@@ -70,7 +88,9 @@ Route::middleware(['auth.prime', 'auth:sanctum', 'tenant.context'])->group(funct
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+    // Support both PATCH and PUT for backwards compatibility
     Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
+    Route::put('/tickets/{ticket}', [TicketController::class, 'update']);
     Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])->name('tickets.destroy');
 
     Route::patch('/tickets/{ticket}/status', TicketTransitionController::class)->name('tickets.status');
@@ -87,6 +107,19 @@ Route::middleware(['auth.prime', 'auth:sanctum', 'tenant.context'])->group(funct
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+
+    // Clients and contacts
+    Route::get('/clients', [\App\Http\Controllers\Api\V1\ClientController::class, 'index'])->name('clients.index');
+    Route::post('/clients', [\App\Http\Controllers\Api\V1\ClientController::class, 'store'])->name('clients.store');
+    Route::get('/clients/{client}', [\App\Http\Controllers\Api\V1\ClientController::class, 'show'])->name('clients.show');
+    Route::patch('/clients/{client}', [\App\Http\Controllers\Api\V1\ClientController::class, 'update'])->name('clients.update');
+    Route::delete('/clients/{client}', [\App\Http\Controllers\Api\V1\ClientController::class, 'destroy'])->name('clients.destroy');
+
+    // Client contacts
+    Route::get('/clients/{client}/contacts', [\App\Http\Controllers\Api\V1\ClientContactController::class, 'index'])->name('clients.contacts.index');
+    Route::post('/clients/{client}/contacts', [\App\Http\Controllers\Api\V1\ClientContactController::class, 'store'])->name('clients.contacts.store');
+    Route::patch('/clients/{client}/contacts/{contact}', [\App\Http\Controllers\Api\V1\ClientContactController::class, 'update'])->name('clients.contacts.update');
+    Route::delete('/clients/{client}/contacts/{contact}', [\App\Http\Controllers\Api\V1\ClientContactController::class, 'destroy'])->name('clients.contacts.destroy');
 
     Route::get('/reports/overview', [ReportController::class, 'overview'])->name('reports.overview');
     Route::get('/reports/tickets-by-agent', [ReportController::class, 'byAgent'])->name('reports.by-agent');

@@ -20,6 +20,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use App\Models\Client;
+use App\Policies\ClientPolicy;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -88,6 +90,9 @@ class AppServiceProvider extends ServiceProvider
         // about individually — this is the single place that grants it
         // universal access, everything else stays tenant/permission scoped.
         Gate::before(fn (User $user, string $ability) => $user->hasRole(RoleName::SuperAdmin->value) ? true : null);
+
+        // Register model policies not already registered elsewhere.
+        Gate::policy(Client::class, ClientPolicy::class);
 
         $this->configureRateLimiting();
 

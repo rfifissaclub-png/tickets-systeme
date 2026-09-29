@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +7,9 @@ import { z } from 'zod'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { XIcon } from 'lucide-react'
+import AttachmentPreview from '@/components/ui/attachment-preview'
+import AttachmentLightbox from '@/components/ui/attachment-lightbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -43,7 +47,7 @@ export type TicketFormValues = z.infer<ReturnType<typeof useTicketFormSchema>>
 
 interface TicketFormProps {
   defaultValues?: Partial<TicketFormValues>
-  onSubmit: (values: TicketFormValues) => Promise<void> | void
+  onSubmit: (values: TicketFormValues | FormData) => Promise<void> | void
   submitLabel: string
   formError?: string | null
   onCancel?: () => void
@@ -51,6 +55,8 @@ interface TicketFormProps {
   showClientSelector?: boolean
   /** Shown (and required) only for a Super Admin, who has no tenant of their own. */
   showTenantSelector?: boolean
+  /** Fields that should be locked/disabled in the form (e.g. when editing cross-tenant tickets). */
+  lockedFields?: ('subject' | 'description')[]
 }
 
 const PRIORITY_OPTIONS: TicketPriority[] = ['low', 'medium', 'high', 'urgent']
@@ -63,6 +69,7 @@ export function TicketForm({
   onCancel,
   showClientSelector = false,
   showTenantSelector = false,
+  lockedFields = [],
 }: TicketFormProps) {
   const { t } = useTranslation()
   const schema = useTicketFormSchema(showClientSelector, showTenantSelector)
@@ -96,6 +103,17 @@ export function TicketForm({
   const clientId = watch('client_id')
   const priority = watch('priority')
 
+  const locked = new Set(lockedFields ?? [])
+
+  const [files, setFiles] = React.useState<File[]>([])
+
+  const onFilesChange = (fileList: FileList | null) => {
+    if (!fileList) return
+    setFiles((prev) => [...prev, ...Array.from(fileList)])
+  }
+
+  const removeFileAt = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index))
+
   // Filtered client-side rather than a dedicated ?role= query param: this
   // app has no searchable/paginated user picker anywhere (the ticket type
   // Select above loads its full list the same way), so a 100-row page is
@@ -110,8 +128,27 @@ export function TicketForm({
   )
   const clients = userPage?.users.filter((candidate) => candidate.roles?.includes('Client')) ?? []
 
+  const handleFormSubmit = handleSubmit(async (values) => {
+    if (files.length === 0) {
+      await onSubmit(values)
+      return
+    }
+
+    const fd = new FormData()
+    fd.append('ticket_type_id', values.ticket_type_id)
+    if (values.tenant_id) fd.append('tenant_id', values.tenant_id)
+    if (values.client_id) fd.append('client_id', values.client_id)
+    fd.append('subject', values.subject)
+    fd.append('description', values.description)
+    if (values.priority) fd.append('priority', values.priority)
+
+    files.forEach((file) => fd.append('attachments[]', file))
+
+    await onSubmit(fd)
+  })
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+    <form onSubmit={handleFormSubmit} noValidate className="space-y-4">
       {formError && (
         <Alert variant="destructive" role="alert">
           <AlertDescription>{formError}</AlertDescription>
@@ -172,7 +209,8 @@ export function TicketForm({
 
       <div className="space-y-2">
         <Label htmlFor="subject">{t('tickets.form.subject')}</Label>
-        <Input id="subject" aria-invalid={!!errors.subject} {...register('subject')} />
+        <Input id="subject" aria-invalid={!!errors.subject} {...register('subject')} disabled={locked.has('subject')} />
+        {locked.has('subject') && <p className="text-muted-foreground text-sm">{t('tickets.form.lockedField')}</p>}
         {errors.subject && <p className="text-destructive text-sm">{errors.subject.message}</p>}
       </div>
 
@@ -222,8 +260,46 @@ export function TicketForm({
           rows={6}
           aria-invalid={!!errors.description}
           {...register('description')}
+          disabled={locked.has('description')}
         />
+        {locked.has('description') && <p className="text-muted-foreground text-sm">{t('tickets.form.lockedField')}</p>}
         {errors.description && <p className="text-destructive text-sm">{errors.description.message}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="attachments">{t('tickets.form.attachments')}</Label>
+        <input
+          id="attachments"
+          type="file"
+          className="w-full"
+          multiple
+          accept="image/*,application/pdf"
+          onChange={(e) => onFilesChange(e.target.files)}
+        />
+        {files.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {files.map((file, idx) => (
+              <div key={idx} className="flex items-start justify-between gap-2 rounded border p-2">
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0">
+                    <AttachmentLightbox file={file} mimeType={file.type} title={file.name}>
+                      <AttachmentPreview file={file} className="max-h-20 max-w-[120px] object-cover rounded" />
+                    </AttachmentLightbox>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{file.name}</div>
+                    <div className="text-muted-foreground text-xs">{(file.size / 1024).toFixed(1)} KB</div>
+                  </div>
+                </div>
+                <div>
+                  <button type="button" className="text-destructive" onClick={() => removeFileAt(idx)} aria-label={t('tickets.form.removeAttachment')}>
+                    <XIcon className="size-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-2">

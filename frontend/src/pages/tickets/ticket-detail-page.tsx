@@ -19,6 +19,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toApiError } from '@/lib/api-client'
 import { useHasRole } from '@/hooks/use-auth'
 import { useDeleteTicket, useTicket, useUpdateTicket } from '@/hooks/use-tickets'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
+import { useAuth } from '@/hooks/use-auth'
 
 export function TicketDetailPage() {
   const { t } = useTranslation()
@@ -32,7 +34,9 @@ export function TicketDetailPage() {
   // Matches tickets.assign, held by Tenant Admin/Manager (Super Admin
   // bypasses all permission checks) — see RoleAndPermissionSeeder. Purely a
   // UX gate: TicketPolicy::assign() rejects anyone else regardless.
+  const { user: currentUser } = useAuth()
   const canAssign = useHasRole('Tenant Admin', 'Manager', 'Super Admin')
+  const isSuperAdmin = useHasRole('Super Admin')
 
   if (isLoading) {
     return (
@@ -59,11 +63,13 @@ export function TicketDetailPage() {
   }
 
   const isReadOnly = ticket.status === 'resolved' || ticket.status === 'closed'
+  const crossTenantLocked = !!(ticket && ticket.client && currentUser && !isSuperAdmin && ticket.client.tenant_id !== currentUser.tenant_id)
 
-  const onSubmitEdit = async (values: TicketFormValues) => {
+  const onSubmitEdit = async (values: TicketFormValues | FormData) => {
     setFormError(null)
     try {
-      await update(values)
+      const payload = values instanceof FormData ? Object.fromEntries(values.entries()) : values
+      await update(payload as any)
       setEditing(false)
       toast.success(t('tickets.detail.updatedToast'))
     } catch (error) {
@@ -73,8 +79,6 @@ export function TicketDetailPage() {
 
   const onDelete = async () => {
     if (!ticketId) return
-    if (!window.confirm(t('tickets.detail.deleteConfirm'))) return
-
     try {
       await remove(ticketId)
       toast.success(t('tickets.detail.deletedToast'))
@@ -111,10 +115,12 @@ export function TicketDetailPage() {
                 {t('tickets.detail.edit')}
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={onDelete}>
-              <TrashIcon className="size-4" />
-              {t('tickets.detail.delete')}
-            </Button>
+            <ConfirmDialog title={t('tickets.detail.deleteConfirm')} description={t('tickets.detail.deleteConfirmDescription')} onConfirm={onDelete}>
+              <Button variant="outline" size="sm">
+                <TrashIcon className="size-4" />
+                {t('tickets.detail.delete')}
+              </Button>
+            </ConfirmDialog>
           </div>
         </div>
       </div>
@@ -135,6 +141,7 @@ export function TicketDetailPage() {
               onSubmit={onSubmitEdit}
               submitLabel={t('tickets.detail.saveChanges')}
               formError={formError}
+              lockedFields={crossTenantLocked ? ['subject', 'description'] : []}
               onCancel={() => setEditing(false)}
             />
           ) : (

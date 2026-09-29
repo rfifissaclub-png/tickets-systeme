@@ -19,7 +19,9 @@ pest()->extend(TestCase::class)
         DB::statement('RESET app.tenant_id');
         DB::statement('RESET app.bypass_rls');
     })
-    ->in('Feature', 'Unit');
+    ->in('Feature');
+
+pest()->extend(TestCase::class)->in('Unit');
 
 /**
  * Provisioning a brand new tenant (and its first user) can never satisfy a

@@ -54,17 +54,20 @@ export async function fetchTicket(id: string): Promise<Ticket> {
   return data.data
 }
 
-export interface CreateTicketPayload {
-  ticket_type_id: string
-  tenant_id?: string
-  client_id?: string
-  subject: string
-  description: string
-  priority?: TicketPriority
-}
+export type CreateTicketPayload =
+  | {
+      ticket_type_id: string
+      tenant_id?: string
+      client_id?: string
+      subject: string
+      description: string
+      priority?: TicketPriority
+    }
+  | FormData
 
 export async function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
-  const { data } = await apiClient.post<ApiSuccessResponse<Ticket>>('/tickets', payload)
+  // axios will set the correct Content-Type header when given a FormData
+  const { data } = await apiClient.post<ApiSuccessResponse<Ticket>>('/tickets', payload as any)
   return data.data
 }
 

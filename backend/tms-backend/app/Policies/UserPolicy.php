@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Enums\RoleName;
 
 /**
  * Backed by the permission catalog seeded in RoleAndPermissionSeeder
@@ -57,6 +58,11 @@ class UserPolicy
      */
     public function manageSkills(User $actor, User $target): bool
     {
+        // Disallow assigning agent skills to users who are Clients.
+        if ($target->hasRole(RoleName::Client->value)) {
+            return false;
+        }
+
         return $actor->can('agent_skills.manage');
     }
 }

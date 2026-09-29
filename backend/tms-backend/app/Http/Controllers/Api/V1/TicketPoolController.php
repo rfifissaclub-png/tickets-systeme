@@ -58,14 +58,30 @@ class TicketPoolController extends Controller
         // every other tenant-owned read) would otherwise fail closed under
         // RLS before the policy even runs — same reasoning as
         // TicketPoolService's own Super Admin handling.
+        // Normalise the incoming ticket identifier: tests (and some
+        // clients) may accidentally pass a JSON-encoded ticket object or an
+        // array instead of a raw id string. Defensively accept any of the
+        // above and extract the actual id to avoid passing invalid values
+        // to Eloquent's findOrFail(), which expects a scalar primary key.
+        $ticketId = $ticket;
+
+        if (is_string($ticket) && str_starts_with($ticket, '{')) {
+            $decoded = json_decode($ticket, true);
+            if (is_array($decoded) && array_key_exists('id', $decoded)) {
+                $ticketId = $decoded['id'];
+            }
+        } elseif (is_array($ticket) && array_key_exists('id', $ticket)) {
+            $ticketId = $ticket['id'];
+        }
+
         $ticketModel = $this->tenantContext->runScoped(
             'platform-wide ticket pool (super admin)',
-            fn () => Ticket::query()->findOrFail($ticket),
+            fn () => Ticket::query()->findOrFail($ticketId),
         );
 
         $this->authorize('pull', $ticketModel);
 
-        $assigned = $this->poolService->pull($ticket, $request->user());
+        $assigned = $this->poolService->pull($ticketId, $request->user());
 
         // Same Super Admin handling as the lookup above: pull() only keeps
         // its own bypass active for as long as it runs, and eager-loading

@@ -82,6 +82,13 @@ it('lets a Tenant Admin view and update their own tenant but not another tenant'
         ->assertOk()
         ->assertJsonPath('data.name', 'Acme Renamed');
 
+    // Also allow updating using the tenant slug in the route (frontend may
+    // send slug instead of UUID).
+    $this->withToken($token)
+        ->patchJson("/api/v1/tenants/{$tenant->slug}", ['name' => 'Acme Renamed Slug'])
+        ->assertOk()
+        ->assertJsonPath('data.name', 'Acme Renamed Slug');
+
     // A different tenant's row simply doesn't exist as far as this Tenant
     // Admin's RLS-bound session is concerned — 404, not 403, same as every
     // other cross-tenant lookup in this app.

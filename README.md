@@ -28,7 +28,7 @@ TMS centralizes support operations for one or many organizations ("tenants") on 
 
 ## Project structure
 
-```
+```text
 backend/tms-backend/   Laravel API
 frontend/               React application
 infra/                  Docker images, Compose configuration, Nginx, CI/CD
@@ -45,7 +45,9 @@ docs/                   Architecture, API reference, deployment guide
 
 ```bash
 cd infra
+cp .env.example .env   # see file header for cross-device / custom-port options
 docker compose up -d
+docker compose exec backend php artisan key:generate
 docker compose exec backend php artisan migrate
 docker compose exec backend php artisan db:seed
 ```
@@ -69,6 +71,7 @@ docker compose exec backend vendor/bin/pest
 
 ## Documentation
 
+- [`README_GITHUB.md`](README_GITHUB.md) — présentation détaillée, démarrage local et paramètres de connexion de développement
 - [`docs/architecture.md`](docs/architecture.md) — system design and key technical decisions
 - [`docs/openapi.yaml`](docs/openapi.yaml) — API reference (OpenAPI 3.0)
 - [`docs/er-diagram.md`](docs/er-diagram.md) — entity-relationship diagram

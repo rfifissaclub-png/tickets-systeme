@@ -74,8 +74,14 @@ class Ticket extends Model
      */
     public function resolveRouteBinding($value, $field = null): ?Model
     {
-        return app(TenantContext::class)->runScoped(
-            'platform-wide ticket lookup (super admin)',
+        // Route-model binding must be able to resolve a Ticket even when
+        // the current request's tenant is bound to a different tenant
+        // (e.g. an admin from another tenant making a targeted edit). We
+        // perform an audited bypass here to let the model be resolved and
+        // let controller-level authorization and the UpdateTicketRequest
+        // enforce what fields may be changed.
+        return app(TenantContext::class)->bypass(
+            'route model binding',
             fn () => parent::resolveRouteBinding($value, $field),
         );
     }

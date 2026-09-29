@@ -23,14 +23,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toApiError } from '@/lib/api-client'
 import { useAuth, useHasRole } from '@/hooks/use-auth'
 import { useTicketTypes } from '@/hooks/use-ticket-types'
-import {
-  useCreateUser,
-  useDeleteUser,
-  useSyncUserRoles,
-  useSyncUserSkills,
-  useUsers,
-} from '@/hooks/use-users'
+import { useCreateUser, useDeleteUser, useSyncUserRoles, useSyncUserSkills, useUsers } from '@/hooks/use-users'
+import RoleBadge from '@/components/ui/role-badge'
 import { ROLE_NAMES, type RoleName, type User } from '@/types/models'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
 
 function useCreateUserFormSchema() {
   const { t } = useTranslation()
@@ -123,8 +119,6 @@ export function UsersPage() {
   }
 
   const onDelete = async (target: User) => {
-    if (!window.confirm(t('users.deleteConfirm', { name: target.name }))) return
-
     try {
       await remove(target.id)
       toast.success(t('users.deletedToast'))
@@ -203,17 +197,19 @@ export function UsersPage() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         {canManageUsers && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={t('users.editRoles')}
-                            disabled={rowUser.id === currentUser?.id}
-                            onClick={() => openRolesDialog(rowUser)}
-                          >
-                            <ShieldIcon className="size-4" />
-                          </Button>
+                          <>
+                            <div className="flex flex-wrap gap-1">
+                              {(rowUser.roles ?? []).map((role) => (
+                                <RoleBadge key={role} role={role} />
+                              ))}
+                            </div>
+                            <Button variant="ghost" size="icon" onClick={() => openRolesDialog(rowUser)} aria-label={t('users.editRoles')}>
+                              <ShieldIcon className="size-4" />
+                            </Button>
+                          </>
                         )}
-                        {canManageSkills && (
+
+                        {canManageSkills && !(rowUser.roles ?? []).includes('Client') && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -223,16 +219,22 @@ export function UsersPage() {
                             <WrenchIcon className="size-4" />
                           </Button>
                         )}
+
                         {canManageUsers && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={t('common.delete')}
-                            disabled={rowUser.id === currentUser?.id}
-                            onClick={() => onDelete(rowUser)}
+                          <ConfirmDialog
+                            title={t('users.deleteConfirm', { name: rowUser.name })}
+                            description={t('users.deleteConfirmDescription')}
+                            onConfirm={() => onDelete(rowUser)}
                           >
-                            <TrashIcon className="size-4" />
-                          </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={t('common.delete')}
+                              disabled={rowUser.id === currentUser?.id}
+                            >
+                              <TrashIcon className="size-4" />
+                            </Button>
+                          </ConfirmDialog>
                         )}
                       </div>
                     </td>

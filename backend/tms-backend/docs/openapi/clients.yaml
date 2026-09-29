@@ -1,0 +1,95 @@
+openapi: 3.0.3
+info:
+  title: TMS - Clients API
+  version: 1.0.0
+paths:
+  /api/v1/clients:
+    get:
+      summary: List clients for current tenant
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Created
+  /api/v1/clients/{clientId}:
+    get:
+      summary: Get a client
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    patch:
+      summary: Update a client
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Delete a client
+      responses:
+        '204':
+          description: Deleted
+  /api/v1/clients/{clientId}/contacts:
+    get:
+      summary: List contacts for a client
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create contact for client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Created
+  /api/v1/clients/{clientId}/contacts/{contactId}:
+    patch:
+      summary: Update a client contact
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: contactId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Delete a client contact
+      responses:
+        '204':
+          description: Deleted

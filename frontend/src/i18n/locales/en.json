@@ -13,7 +13,8 @@
     "dash": "—",
     "unexpectedError": "An unexpected error occurred.",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "back": "Back"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -343,5 +344,45 @@
     "emptyTitle": "No audit entries match your filters",
     "loadErrorTitle": "Couldn't load the audit log",
     "loadErrorDescription": "Something went wrong fetching audit entries. Try refreshing the page."
+  },
+  "clients": {
+    "title": "Clients",
+    "subtitle": "Manage client organizations and their contacts.",
+    "new": "New client",
+    "edit": "Edit client",
+    "details": "Client details",
+    "notFoundTitle": "Client not found",
+    "notFoundDescription": "This client may have been deleted, or you may not have access to it.",
+    "backToList": "Back to clients",
+    "searchPlaceholder": "Search clients…",
+    "filter": {
+      "all": "All clients",
+      "direct": "Direct clients",
+      "linked": "Linked clients"
+    },
+    "emptyTitle": "No clients found",
+    "columnName": "Name",
+    "columnEmail": "Email",
+    "form": {
+      "name": "Name",
+      "email": "Email"
+    },
+    "createdToast": "Client created.",
+    "updatedToast": "Client updated.",
+    "deletedToast": "Client deleted.",
+    "contacts": {
+      "title": "Contacts",
+      "new": "New contact",
+      "empty": "No contacts yet.",
+      "edit": "Edit contact",
+      "delete": "Delete contact",
+      "form": {
+        "name": "Name",
+        "email": "Email"
+      },
+      "createdToast": "Contact created.",
+      "updatedToast": "Contact updated.",
+      "deletedToast": "Contact deleted."
+    }
   }
 }

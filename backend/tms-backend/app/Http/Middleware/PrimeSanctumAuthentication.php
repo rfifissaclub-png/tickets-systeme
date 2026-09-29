@@ -41,6 +41,24 @@ class PrimeSanctumAuthentication
 
     public function handle(Request $request, Closure $next): Response
     {
+
+        // If a user is already set (e.g. via actingAs in tests), skip the
+        // expensive/fragile priming step only when the current request is
+        // NOT a bearer-token request. Tests that revoke a token and then
+        // re-send the same Authorization header expect the guard to be
+        // re-resolved; skipping priming for a bearer request masks that.
+        $previousUser = Auth::user();
+        $hasBearer = (bool) $request->bearerToken();
+
+        if ($previousUser !== null && ! $hasBearer) {
+            // Ensure the sanctum guard has the same user instance and skip
+            // priming which would attempt to resolve a bearer token.
+            Auth::guard('sanctum')->setUser($previousUser);
+            return $next($request);
+        }
+
+        // No pre-set user: perform the normal priming flow for incoming
+        // bearer-token requests.
         Auth::forgetGuards();
 
         $this->tenantContext->primeAuthentication(function () {
